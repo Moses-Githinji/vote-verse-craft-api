@@ -1,0 +1,9 @@
+node_modules
+dist
+logs
+coverage
+.env
+.env.example
+*.log
+.DS_Store
+frontend-integration-guide.txt
