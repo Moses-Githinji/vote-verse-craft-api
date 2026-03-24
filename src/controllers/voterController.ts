@@ -5,7 +5,7 @@ import { Organization } from '../models/Organization';
 import { processVoterCSV } from '../utils/csvProcessor';
 import { voterLoginSchema } from '../validators/auth';
 import jwt from 'jsonwebtoken';
-import { Types } from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { writeAuditLog } from '../utils/audit';
 
 export const loginVoter = async (req: Request, res: Response) => {
