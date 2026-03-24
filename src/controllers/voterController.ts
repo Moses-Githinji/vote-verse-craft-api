@@ -11,7 +11,20 @@ import { writeAuditLog } from '../utils/audit';
 export const loginVoter = async (req: Request, res: Response) => {
   try {
     const { orgType } = req.params;
-    const validatedData = voterLoginSchema.parse(req.body);
+    const body = req.body;
+
+    // Support organization-specific field aliases
+    let authCredential = body.authCredential;
+    if (!authCredential) {
+      authCredential = body.admissionNumber || // school
+                       body.memberNumber ||    // sacco
+                       body.districtNumber ||  // church
+                       body.voterCardId;       // political
+    }
+
+    if (!authCredential) {
+      return res.status(400).json({ success: false, error: { message: 'Identification number is required' } });
+    }
 
     const organization = await Organization.findOne({ orgType });
     if (!organization) {
@@ -20,7 +33,7 @@ export const loginVoter = async (req: Request, res: Response) => {
 
     const voter = await Voter.findOne({ 
       organizationId: organization._id, 
-      authCredential: validatedData.authCredential 
+      authCredential 
     });
 
     if (!voter || !voter.isActive) {
@@ -28,8 +41,16 @@ export const loginVoter = async (req: Request, res: Response) => {
     }
 
     let election = null;
-    if (validatedData.electionId) {
-      election = await Election.findById(validatedData.electionId).populate('candidates');
+    if (body.electionId) {
+      if (mongoose.Types.ObjectId.isValid(body.electionId)) {
+        election = await Election.findById(body.electionId);
+      }
+    } else {
+      // Automatically resolve the latest active election for this org
+      election = await Election.findOne({ 
+        organizationId: organization._id, 
+        status: 'active' 
+      }).sort({ startDate: -1 });
     }
 
     const payload = {
@@ -54,7 +75,7 @@ export const loginVoter = async (req: Request, res: Response) => {
       voterId: voter._id as any,
       ipAddress: (req as any).ip,
       userAgent: (req as any).get('User-Agent'),
-      metadata: { authCredential: validatedData.authCredential }
+      metadata: { authCredential }
     });
 
     res.json({
