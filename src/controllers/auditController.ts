@@ -4,13 +4,15 @@ import { Organization } from '../models/Organization';
 
 export const getAuditLogs = async (req: Request, res: Response) => {
   try {
-    const { orgType } = req.params;
+    // Use user's organization ID from token instead of URL parameter
+    const userOrgId = (req as any).userOrgId;
     const { page = 1, limit = 50, action, userId, resourceType, startDate, endDate } = req.query;
 
-    const organization = await Organization.findOne({ orgType });
-    if (!organization) return res.status(404).json({ success: false, error: { message: 'Org not found' } });
+    if (!userOrgId) {
+      return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
+    }
 
-    const query: any = { organizationId: organization._id };
+    const query: any = { organizationId: userOrgId };
     
     if (action) query.action = action;
     if (userId) query.userId = userId;

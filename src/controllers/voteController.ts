@@ -16,7 +16,7 @@ const createVerificationHash = (vote: any) => {
 
 export const castVote = async (req: Request, res: Response) => {
   try {
-    const { orgType } = req.params;
+    // Note: orgType not used - voters are authenticated via token and already have org info
     const { electionId, votes, timestamp } = req.body;
     const voterId = req.user.voterId;
 

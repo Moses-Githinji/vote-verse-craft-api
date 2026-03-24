@@ -19,15 +19,12 @@ electionRouter.use(optionalAuth, (req, res, next) => {
 });
 
 electionRouter.use((req, res, next) => {
-  if (req.method !== 'GET') {
-    authenticate(req, res, () => {
-      requireRole(['super_admin', 'admin'])(req, res, () => {
-        requireOrgAccess(req, res, next);
-      });
+  // Apply authentication and org access check for all methods
+  authenticate(req, res, () => {
+    requireRole(['super_admin', 'admin', 'voter'])(req, res, () => {
+      requireOrgAccess(req, res, next);
     });
-  } else {
-    next();
-  }
+  });
 });
 
 electionRouter.get('/', getElections);

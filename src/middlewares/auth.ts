@@ -17,16 +17,20 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
 };
 
 export const requireOrgAccess = (req: Request, res: Response, next: NextFunction) => {
-  const { orgType } = req.params;
   const user = (req as any).user;
   
   if (!user || !user.organization) {
      return res.status(403).json({ success: false, error: { message: 'Organization access denied' } });
   }
 
-  if (user.organization.type !== orgType && user.role !== 'super_admin') {
+  // For routes with orgType param, verify it matches user's org type
+  const urlOrgType = req.params.orgType;
+  if (urlOrgType && user.organization.type !== urlOrgType && user.role !== 'super_admin') {
     return res.status(403).json({ success: false, error: { message: 'Organization access denied for this type' } });
   }
+  
+  // Attach user's organization ID to request for use in controllers
+  (req as any).userOrgId = user.organization.id;
   next();
 };
 

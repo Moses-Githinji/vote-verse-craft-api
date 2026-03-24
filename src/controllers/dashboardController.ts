@@ -7,19 +7,22 @@ import { Candidate } from '../models/Candidate';
 
 export const getDashboardStats = async (req: Request, res: Response) => {
   try {
-    const { orgType } = req.params;
-    const organization = await Organization.findOne({ orgType });
-    if (!organization) return res.status(404).json({ success: false, error: { message: 'Org not found' } });
+    // Use user's organization ID from token instead of URL parameter
+    const userOrgId = (req as any).userOrgId;
+    
+    if (!userOrgId) {
+      return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
+    }
 
-    const totalElections = await Election.countDocuments({ organizationId: organization._id });
-    const activeElections = await Election.countDocuments({ organizationId: organization._id, status: 'active' });
-    const totalVoters = await Voter.countDocuments({ organizationId: organization._id });
-    const votersVoted = await Voter.countDocuments({ organizationId: organization._id, hasVoted: true });
+    const totalElections = await Election.countDocuments({ organizationId: userOrgId });
+    const activeElections = await Election.countDocuments({ organizationId: userOrgId, status: 'active' });
+    const totalVoters = await Voter.countDocuments({ organizationId: userOrgId });
+    const votersVoted = await Voter.countDocuments({ organizationId: userOrgId, hasVoted: true });
     
     // Total votes cast across all elections in this org
     // Actually, Vote doesn't store organizationId directly but electionId.
     // Let's get all election IDs for this org.
-    const elections = await Election.find({ organizationId: organization._id }, '_id');
+    const elections = await Election.find({ organizationId: userOrgId }, '_id');
     const electionIds = elections.map(e => e._id);
     const totalVotes = await Vote.countDocuments({ electionId: { $in: electionIds } });
     const totalCandidates = await Candidate.countDocuments({ electionId: { $in: electionIds } });

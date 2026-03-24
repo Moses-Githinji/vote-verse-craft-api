@@ -15,11 +15,11 @@ export const apiRouter = Router();
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/organizations', orgRouter); // Changed to orgRouter to match import, assuming instruction had a typo with organizationRouter
 
-// Organization specific routes
-apiRouter.use('/:orgType/voters', voterRouter);
-apiRouter.use('/:orgType/elections', electionRouter);
-apiRouter.use('/:orgType/elections/:electionId/candidates', candidateRouter);
-apiRouter.use('/:orgType/vote', voteRouter);
-apiRouter.use('/:orgType/elections/:id/results', resultsRouter);
-apiRouter.use('/:orgType/audit', auditRouter);
-apiRouter.use('/:orgType/dashboard', dashboardRouter);
+// Organization specific routes - org type removed, org derived from JWT token
+apiRouter.use('/voters', voterRouter);
+apiRouter.use('/elections', electionRouter);
+apiRouter.use('/elections/:electionId/candidates', candidateRouter);
+apiRouter.use('/vote', voteRouter);
+apiRouter.use('/elections/:id/results', resultsRouter);
+apiRouter.use('/audit', auditRouter);
+apiRouter.use('/dashboard', dashboardRouter);

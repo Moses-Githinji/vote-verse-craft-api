@@ -7,7 +7,8 @@ import { writeAuditLog } from '../utils/audit';
 
 export const getCandidates = async (req: Request, res: Response) => {
   try {
-    const { orgType, electionId } = req.params;
+    // Note: orgType not needed - electionId already ties to specific election
+    const { electionId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(electionId as string)) {
       return res.status(400).json({ success: false, error: { message: 'Invalid election ID format' } });
@@ -22,17 +23,20 @@ export const getCandidates = async (req: Request, res: Response) => {
 
 export const createCandidate = async (req: Request, res: Response) => {
   try {
-    const { orgType, electionId } = req.params;
+    // Use user's organization ID from token instead of URL parameter
+    const userOrgId = (req as any).userOrgId;
+    const { electionId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(electionId as string)) {
       return res.status(400).json({ success: false, error: { message: 'Invalid election ID format' } });
     }
     
-    // Verify org
-    const organization = await Organization.findOne({ orgType });
-    if (!organization) return res.status(404).json({ success: false, error: { message: 'Org not found' } });
+    if (!userOrgId) {
+      return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
+    }
     
-    const election = await Election.findOne({ _id: electionId, organizationId: organization._id });
+    // Verify election belongs to user's organization
+    const election = await Election.findOne({ _id: electionId, organizationId: userOrgId });
 
     if (!election) return res.status(404).json({ success: false, error: { message: 'Election not found' } });
 
@@ -61,7 +65,7 @@ export const createCandidate = async (req: Request, res: Response) => {
     });
 
     await writeAuditLog({
-      organizationId: organization._id,
+      organizationId: userOrgId,
       action: 'candidate_created',
       resourceType: 'candidate',
       resourceId: candidate._id as any,
@@ -93,8 +97,12 @@ export const updateCandidate = async (req: Request, res: Response) => {
     const candidate = await Candidate.findByIdAndUpdate(candidateId as string, payload, { new: true });
     if (!candidate) return res.status(404).json({ success: false, error: { message: 'Candidate not found' } });
 
+    // Get organizationId from the election
+    const election = await Election.findById(candidate.electionId);
+    const orgId = election?.organizationId || candidate.electionId;
+
     await writeAuditLog({
-      organizationId: candidate.electionId as any,
+      organizationId: orgId,
       action: 'candidate_updated',
       resourceType: 'candidate',
       resourceId: candidate._id as any,
@@ -121,8 +129,12 @@ export const deleteCandidate = async (req: Request, res: Response) => {
     const candidate = await Candidate.findByIdAndDelete(candidateId as string);
     if (!candidate) return res.status(404).json({ success: false, error: { message: 'Candidate not found' } });
 
+    // Get organizationId from the election
+    const election = await Election.findById(candidate.electionId);
+    const orgId = election?.organizationId || candidate.electionId;
+
     await writeAuditLog({
-      organizationId: candidate.electionId as any,
+      organizationId: orgId,
       action: 'candidate_deleted',
       resourceType: 'candidate',
       resourceId: candidate._id as any,

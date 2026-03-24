@@ -8,6 +8,7 @@ import jwt from 'jsonwebtoken';
 import mongoose, { Types } from 'mongoose';
 import { writeAuditLog } from '../utils/audit';
 
+// NOTE: loginVoter keeps orgType from URL because voters need to identify their org on first login
 export const loginVoter = async (req: Request, res: Response) => {
   try {
     const { orgType } = req.params;
@@ -106,13 +107,15 @@ export const loginVoter = async (req: Request, res: Response) => {
 
 export const getVoters = async (req: Request, res: Response) => {
   try {
-    const { orgType } = req.params;
+    // Use user's organization ID from token instead of URL parameter
+    const userOrgId = (req as any).userOrgId;
     const { page = 1, limit = 20, search, stream, hasVoted } = req.query;
     
-    const organization = await Organization.findOne({ orgType });
-    if (!organization) return res.status(404).json({ success: false, error: { message: 'Org not found' } });
+    if (!userOrgId) {
+      return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
+    }
 
-    const query: any = { organizationId: organization._id };
+    const query: any = { organizationId: userOrgId };
     if (search) {
       query.$text = { $search: search as string };
     }
@@ -152,14 +155,17 @@ export const getVoters = async (req: Request, res: Response) => {
 
 export const createVoter = async (req: Request, res: Response) => {
   try {
-    const { orgType } = req.params;
-    const organization = await Organization.findOne({ orgType });
-     if (!organization) return res.status(404).json({ success: false, error: { message: 'Org not found' } });
-     
-    const voterExists = await Voter.findOne({ organizationId: organization._id, authCredential: req.body.authCredential });
+    // Use user's organization ID from token instead of URL parameter
+    const userOrgId = (req as any).userOrgId;
+    
+    if (!userOrgId) {
+      return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
+    }
+
+    const voterExists = await Voter.findOne({ organizationId: userOrgId, authCredential: req.body.authCredential });
     if (voterExists) return res.status(400).json({ success: false, error: { message: 'Auth credential already exists' } });
 
-    const voter = await Voter.create({ ...req.body, organizationId: organization._id });
+    const voter = await Voter.create({ ...req.body, organizationId: userOrgId });
     res.status(201).json({ success: true, data: { voter } });
   } catch (error: any) {
     res.status(400).json({ success: false, error: { message: error.message } });
@@ -169,15 +175,18 @@ export const createVoter = async (req: Request, res: Response) => {
 
 export const bulkCreateVoters = async (req: Request, res: Response) => {
   try {
-    const { orgType } = req.params;
+    // Use user's organization ID from token instead of URL parameter
+    const userOrgId = (req as any).userOrgId;
+    
+    if (!userOrgId) {
+      return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
+    }
+
     if (!req.file) {
       return res.status(400).json({ success: false, error: { message: 'CSV file required' } });
     }
 
-    const organization = await Organization.findOne({ orgType });
-    if (!organization) return res.status(404).json({ success: false, error: { message: 'Org not found' } });
-
-    const result: any = await processVoterCSV(req.file.buffer, organization._id.toString());
+    const result: any = await processVoterCSV(req.file.buffer, userOrgId.toString());
     
     if (result.validVoters.length > 0) {
       await Voter.insertMany(result.validVoters);
