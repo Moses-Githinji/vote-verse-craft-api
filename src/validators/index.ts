@@ -23,6 +23,15 @@ export const electionSchema = z.object({
   votingMethod: z.string(),
   startDate: z.string().datetime(),
   endDate: z.string().datetime(),
+  ballotQuestions: z.array(z.object({
+    id: z.string(),
+    type: z.enum(['single', 'multi', 'ranked', 'yesno']),
+    title: z.string(),
+    options: z.array(z.string()),
+    allowWriteIn: z.boolean().default(false),
+    allowNota: z.boolean().default(false),
+    maxSelections: z.number().optional(),
+  })).optional(),
   settings: z.record(z.string(), z.any()).optional(),
   candidates: z.array(z.object({
     name: z.string(),

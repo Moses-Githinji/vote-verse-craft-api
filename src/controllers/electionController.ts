@@ -69,6 +69,29 @@ export const createElection = async (req: Request, res: Response) => {
   }
 };
 
+export const updateElection = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const validatedData = electionSchema.partial().parse(req.body);
+
+    if (!mongoose.Types.ObjectId.isValid(id as string)) {
+      return res.status(400).json({ success: false, error: { message: 'Invalid election ID format' } });
+    }
+
+    const election = await Election.findByIdAndUpdate(
+      id as string,
+      { $set: validatedData },
+      { new: true, runValidators: true }
+    );
+
+    if (!election) return res.status(404).json({ success: false, error: { message: 'Election not found' } });
+
+    res.json({ success: true, data: { election } });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: { message: error.message } });
+  }
+};
+
 export const updateElectionStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

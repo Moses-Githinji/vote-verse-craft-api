@@ -3,6 +3,7 @@ import {
   getElections, 
   getElectionById,
   createElection, 
+  updateElection,
   updateElectionStatus 
 } from '../controllers/electionController';
 import { authenticate, requireRole, requireOrgAccess, optionalAuth } from '../middlewares/auth';
@@ -32,4 +33,5 @@ electionRouter.use((req, res, next) => {
 electionRouter.get('/', getElections);
 electionRouter.get('/:id', getElectionById);
 electionRouter.post('/', createElection);
+electionRouter.put('/:id', updateElection);
 electionRouter.put('/:id/status', updateElectionStatus);
