@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 export interface IVote extends Document {
   electionId: Types.ObjectId;
   voterId: Types.ObjectId;
-  voteData: Map<string, string>;
+  voteData: Map<string, any>;
   ipAddress?: string;
   userAgent?: string;
   voteTimestamp: Date;
@@ -12,7 +12,7 @@ export interface IVote extends Document {
 const voteSchema = new Schema({
   electionId: { type: Schema.Types.ObjectId, ref: 'Election', required: true },
   voterId: { type: Schema.Types.ObjectId, ref: 'Voter', required: true },
-  voteData: { type: Map, of: String, required: true },
+  voteData: { type: Map, of: Schema.Types.Mixed, required: true },
   ipAddress: String,
   userAgent: String,
   voteTimestamp: { type: Date, default: Date.now },

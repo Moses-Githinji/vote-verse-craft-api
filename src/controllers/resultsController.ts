@@ -1,45 +1,63 @@
 import { Request, Response } from 'express';
 import { Vote } from '../models/Vote';
-import { Election } from '../models/Election';
+import { Election, IBallotQuestion } from '../models/Election';
 import { Voter } from '../models/Voter';
 import { Organization } from '../models/Organization';
 import mongoose from 'mongoose';
 
-const getElectionResultsAggregation = (electionId: string) => {
-  return [
-    { $match: { electionId: new mongoose.Types.ObjectId(electionId) } },
-    { $project: { votesArray: { $objectToArray: "$voteData" } } },
-    { $unwind: "$votesArray" },
-    { $group: { 
-        _id: { 
-          candidateId: "$votesArray.v", 
-          position: "$votesArray.k" 
-        }, 
-        voteCount: { $sum: 1 } 
-      } 
-    },
-    { $addFields: { candidateObjectId: { $toObjectId: "$_id.candidateId" } } },
-    { $lookup: {
-        from: "candidates",
-        localField: "candidateObjectId",
-        foreignField: "_id",
-        as: "candidateDetails"
-    } },
-    { $unwind: "$candidateDetails" },
-    { $group: {
-        _id: "$_id.position",
-        candidates: { $push: {
-            id: "$_id.candidateId",
-            name: "$candidateDetails.name",
-            votes: "$voteCount"
-        } }
-    } },
-    { $project: {
-        position: "$_id",
-        candidates: 1,
-        _id: 0
-    } }
-  ];
+/**
+ * Tallies results question-by-question from raw vote documents.
+ * Handles single, multi, ranked, and yesno question types.
+ */
+const tallyResults = (votes: any[], ballotQuestions: IBallotQuestion[]) => {
+  const tallies: Record<string, Record<string, number>> = {};
+
+  // Initialize tallies for each question
+  for (const q of ballotQuestions) {
+    tallies[q.id] = {};
+    for (const opt of q.options) {
+      tallies[q.id][opt] = 0;
+    }
+    if (q.allowNota) tallies[q.id]['NOTA'] = 0;
+  }
+
+  // Count votes
+  for (const vote of votes) {
+    const voteData = vote.voteData instanceof Map
+      ? Object.fromEntries(vote.voteData)
+      : vote.voteData;
+
+    for (const q of ballotQuestions) {
+      const answer = voteData[q.id];
+      if (!answer) continue;
+
+      switch (q.type) {
+        case 'single':
+        case 'yesno':
+          if (typeof answer === 'string') {
+            tallies[q.id][answer] = (tallies[q.id][answer] || 0) + 1;
+          }
+          break;
+
+        case 'multi':
+          if (Array.isArray(answer)) {
+            for (const sel of answer) {
+              tallies[q.id][sel] = (tallies[q.id][sel] || 0) + 1;
+            }
+          }
+          break;
+
+        case 'ranked':
+          // For ranked-choice, count first-preference votes (simplified IRV)
+          if (Array.isArray(answer) && answer.length > 0) {
+            tallies[q.id][answer[0]] = (tallies[q.id][answer[0]] || 0) + 1;
+          }
+          break;
+      }
+    }
+  }
+
+  return tallies;
 };
 
 export const getResults = async (req: Request, res: Response) => {
@@ -56,10 +74,29 @@ export const getResults = async (req: Request, res: Response) => {
 
     const totalVoters = await Voter.countDocuments({ organizationId: election.organizationId });
     const votesCast = await Vote.countDocuments({ electionId: election._id });
-    
-    const resultsAgg = await Vote.aggregate(getElectionResultsAggregation(election._id as unknown as string));
 
-    const responseData = {
+    // Fetch all votes for this election
+    const allVotes = await Vote.find({ electionId: election._id }).lean();
+
+    // Build results based on ballot questions
+    let results: any[] = [];
+
+    if (election.ballotQuestions && election.ballotQuestions.length > 0) {
+      const tallies = tallyResults(allVotes, election.ballotQuestions);
+
+      results = election.ballotQuestions.map(q => ({
+        questionId: q.id,
+        type: q.type,
+        title: q.title,
+        options: Object.entries(tallies[q.id] || {}).map(([option, count]) => ({
+          option,
+          votes: count,
+          percentage: votesCast > 0 ? Math.round((count / votesCast) * 10000) / 100 : 0
+        })).sort((a, b) => b.votes - a.votes)
+      }));
+    }
+
+    res.json({
       success: true,
       data: {
         election: {
@@ -68,20 +105,13 @@ export const getResults = async (req: Request, res: Response) => {
           status: election.status,
           totalVoters,
           votesCast,
-          turnoutPercentage: totalVoters > 0 ? (votesCast / totalVoters) * 100 : 0
+          turnoutPercentage: totalVoters > 0 ? Math.round((votesCast / totalVoters) * 10000) / 100 : 0
         },
-        results: resultsAgg.map(r => ({
-          position: r.position,
-          candidates: r.candidates.map((c: any) => ({
-             ...c,
-             percentage: votesCast > 0 ? (c.votes / votesCast) * 100 : 0
-          }))
-        })),
+        results,
+        ballotQuestions: election.ballotQuestions,
         realTime: false
       }
-    };
-
-    res.json(responseData);
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, error: { message: error.message } });
   }
