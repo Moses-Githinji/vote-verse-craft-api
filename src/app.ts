@@ -10,7 +10,11 @@ export const app = express();
 
 // Middlewares
 app.use(helmet());
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
+app.use(cors({ 
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.FRONTEND_URL || 'https://kurapap-admin.vercel.app'
+    : process.env.CORS_ORIGIN || 'http://localhost:8081'
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

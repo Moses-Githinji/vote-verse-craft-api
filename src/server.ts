@@ -7,11 +7,19 @@ import { configureSockets } from './sockets/electionMonitoring';
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Determine frontend URL based on environment
+const getFrontendUrl = () => {
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.FRONTEND_URL || 'https://kurapap-admin.vercel.app';
+  }
+  return process.env.FRONTEND_URL || 'http://localhost:8081';
+};
+
 const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || '*',
+    origin: getFrontendUrl(),
     methods: ['GET', 'POST']
   }
 });
