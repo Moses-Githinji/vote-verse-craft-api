@@ -11,9 +11,27 @@ export const app = express();
 // Middlewares
 app.use(helmet());
 app.use(cors({ 
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.FRONTEND_URL || 'https://kurapap-admin.vercel.app'
-    : process.env.CORS_ORIGIN || 'http://localhost:8081'
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Get allowed origins - prioritize FRONTEND_URL if set
+    const allowedOrigins = process.env.FRONTEND_URL 
+      ? [process.env.FRONTEND_URL] 
+      : ['http://localhost:8081', 'http://localhost:3000'];
+    
+    // In production, also allow the Vercel frontend
+    if (process.env.NODE_ENV === 'production') {
+      allowedOrigins.push('https://kurapap-admin.vercel.app');
+    }
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

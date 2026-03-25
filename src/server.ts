@@ -9,10 +9,15 @@ dotenv.config();
 
 // Determine frontend URL based on environment
 const getFrontendUrl = () => {
-  if (process.env.NODE_ENV === 'production') {
-    return process.env.FRONTEND_URL || 'https://kurapap-admin.vercel.app';
+  // If FRONTEND_URL is explicitly set, use it
+  if (process.env.FRONTEND_URL) {
+    return process.env.FRONTEND_URL;
   }
-  return process.env.FRONTEND_URL || 'http://localhost:8081';
+  // Otherwise use environment-specific defaults
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://kurapap-admin.vercel.app';
+  }
+  return 'http://localhost:8081';
 };
 
 const server = http.createServer(app);
