@@ -10,25 +10,11 @@ import { authenticate, requireRole, requireOrgAccess, optionalAuth } from '../mi
 
 export const electionRouter = Router({ mergeParams: true });
 
-electionRouter.use(optionalAuth, (req, res, next) => {
-  // if GET, we allow voters to view if they have valid token.
-  if (req.method === 'GET') {
-     return authenticate(req, res, next);
-  }
-  next();
-});
+// GET requests - allow voters to view elections (optional auth)
+electionRouter.get('/', optionalAuth, getElections);
+electionRouter.get('/:id', optionalAuth, getElectionById);
 
-electionRouter.use((req, res, next) => {
-  // Apply authentication and org access check for all methods
-  authenticate(req, res, () => {
-    requireRole(['super_admin', 'admin', 'voter'])(req, res, () => {
-      requireOrgAccess(req, res, next);
-    });
-  });
-});
-
-electionRouter.get('/', getElections);
-electionRouter.get('/:id', getElectionById);
-electionRouter.post('/', createElection);
-electionRouter.put('/:id', updateElection);
-electionRouter.put('/:id/status', updateElectionStatus);
+// Other methods - require full authentication
+electionRouter.post('/', authenticate, requireRole(['super_admin', 'admin']), createElection);
+electionRouter.put('/:id', authenticate, requireRole(['super_admin', 'admin']), requireOrgAccess, updateElection);
+electionRouter.put('/:id/status', authenticate, requireRole(['super_admin', 'admin']), requireOrgAccess, updateElectionStatus);
