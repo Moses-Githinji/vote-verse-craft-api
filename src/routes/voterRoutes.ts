@@ -11,7 +11,8 @@ import { uploadCSV } from '../middlewares/upload';
 
 export const voterRouter = Router({ mergeParams: true });
 
-voterRouter.post('/login', loginLimiter, loginVoter);
+// Voter login requires orgType to identify which organization the voter belongs to
+voterRouter.post('/:orgType/login', loginLimiter, loginVoter);
 
 voterRouter.use(authenticate);
 voterRouter.use(requireOrgAccess);
