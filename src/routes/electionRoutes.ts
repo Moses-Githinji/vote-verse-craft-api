@@ -2,13 +2,17 @@ import { Router } from 'express';
 import { 
   getElections, 
   getElectionById,
+  getActiveElection,
   createElection, 
   updateElection,
   updateElectionStatus 
 } from '../controllers/electionController';
-import { authenticate, requireRole, requireOrgAccess, optionalAuth } from '../middlewares/auth';
+import { authenticate, requireRole, requireOrgAccess } from '../middlewares/auth';
 
 export const electionRouter = Router({ mergeParams: true });
+
+// Special routes first
+electionRouter.get('/active', authenticate, requireOrgAccess, getActiveElection);
 
 // GET requests - require auth and org access for voters to view elections
 electionRouter.get('/', authenticate, requireOrgAccess, getElections);

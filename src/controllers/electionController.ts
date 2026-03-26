@@ -48,6 +48,31 @@ export const getElectionById = async (req: Request, res: Response) => {
   }
 };
 
+export const getActiveElection = async (req: Request, res: Response) => {
+  try {
+    const userOrgId = (req as any).userOrgId;
+    
+    if (!userOrgId) {
+      return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
+    }
+
+    const election = await Election.findOne({ 
+      organizationId: userOrgId, 
+      status: 'active' 
+    }).sort({ startDate: -1 });
+
+    if (!election) {
+      return res.status(404).json({ success: false, error: { message: 'No active election found' } });
+    }
+
+    const candidates = await Candidate.find({ electionId: election._id });
+    
+    res.json({ success: true, data: { election, candidates } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { message: error.message } });
+  }
+};
+
 export const createElection = async (req: Request, res: Response) => {
   try {
     // Use user's organization ID from token instead of URL parameter
