@@ -11,7 +11,14 @@ import { writeAuditLog } from '../utils/audit';
 // NOTE: loginVoter keeps orgType from URL because voters need to identify their org on first login
 export const loginVoter = async (req: Request, res: Response) => {
   try {
-    const { orgType } = req.params;
+    // Get orgType from URL params first, then fall back to body
+    let orgType = req.params.orgType || req.body.orgType;
+    
+    // Support organization type in body for backward compatibility
+    if (!orgType && req.body.organizationType) {
+      orgType = req.body.organizationType;
+    }
+    
     const body = req.body;
 
     // Support organization-specific field aliases
@@ -25,6 +32,21 @@ export const loginVoter = async (req: Request, res: Response) => {
 
     if (!authCredential) {
       return res.status(400).json({ success: false, error: { message: 'Identification number is required' } });
+    }
+
+    // If orgType is still not provided, we need to find which org the voter belongs to
+    // This requires searching across all organizations
+    if (!orgType) {
+      // Try to find voter by authCredential and get their organization
+      const voter = await Voter.findOne({ authCredential }).populate('organizationId');
+      if (!voter) {
+        return res.status(401).json({ success: false, error: { message: 'Invalid credential' } });
+      }
+      const org = await Organization.findById(voter.organizationId);
+      if (!org) {
+        return res.status(404).json({ success: false, error: { message: 'Organization not found' } });
+      }
+      orgType = org.orgType;
     }
 
     const organization = await Organization.findOne({ orgType });

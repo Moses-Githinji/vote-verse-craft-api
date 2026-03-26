@@ -14,6 +14,9 @@ export const voterRouter = Router({ mergeParams: true });
 // Voter login requires orgType to identify which organization the voter belongs to
 voterRouter.post('/:orgType/login', loginLimiter, loginVoter);
 
+// Also support direct login without orgType (for backward compatibility)
+voterRouter.post('/login', loginLimiter, loginVoter);
+
 voterRouter.use(authenticate);
 voterRouter.use(requireOrgAccess);
 voterRouter.use(requireRole(['super_admin', 'admin']));
