@@ -10,9 +10,9 @@ import { authenticate, requireRole, requireOrgAccess, optionalAuth } from '../mi
 
 export const electionRouter = Router({ mergeParams: true });
 
-// GET requests - allow voters to view elections (optional auth)
-electionRouter.get('/', optionalAuth, getElections);
-electionRouter.get('/:id', optionalAuth, getElectionById);
+// GET requests - require auth and org access for voters to view elections
+electionRouter.get('/', authenticate, requireOrgAccess, getElections);
+electionRouter.get('/:id', authenticate, requireOrgAccess, getElectionById);
 
 // Other methods - require full authentication
 electionRouter.post('/', authenticate, requireRole(['super_admin', 'admin']), createElection);

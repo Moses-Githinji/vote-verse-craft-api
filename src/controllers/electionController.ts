@@ -7,25 +7,15 @@ import { electionSchema } from '../validators';
 
 export const getElections = async (req: Request, res: Response) => {
   try {
-    const userOrgId = (req as any).userOrgId;
     const user = (req as any).user;
+    const userOrgId = (req as any).userOrgId;
     
-    // If user is authenticated and has org, filter by their organization
-    // If no auth or voter role, allow viewing all active elections
-    let query = {};
-    
-    if (user && userOrgId) {
-      // Authenticated user with organization - filter by org
-      query = { organizationId: userOrgId };
-    } else if (user && user.role === 'voter') {
-      // Voters can see elections for their organization
-      if (user.organization && user.organization.id) {
-        query = { organizationId: user.organization.id };
-      }
+    // If no user, deny access (require authentication)
+    if (!user || !userOrgId) {
+      return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
     }
-    // Unauthenticated requests can see all active elections (public read)
-    
-    const elections = await Election.find(query);
+
+    const elections = await Election.find({ organizationId: userOrgId });
     res.json({ success: true, data: { elections } });
   } catch (error: any) {
     res.status(500).json({ success: false, error: { message: error.message } });
@@ -36,22 +26,17 @@ export const getElectionById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userOrgId = (req as any).userOrgId;
-    const user = (req as any).user;
     
     if (!mongoose.Types.ObjectId.isValid(id as string)) {
       return res.status(400).json({ success: false, error: { message: 'Invalid election ID format' } });
     }
 
-    // Build query - filter by organization if user is authenticated
-    let query: any = { _id: id };
-    if (user && userOrgId) {
-      query.organizationId = userOrgId;
-    } else if (user && user.role === 'voter' && user.organization && user.organization.id) {
-      query.organizationId = user.organization.id;
+    // Require organization access
+    if (!userOrgId) {
+      return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
     }
-    // Otherwise allow viewing any election (public read)
 
-    const election = await Election.findOne(query);
+    const election = await Election.findOne({ _id: id, organizationId: userOrgId });
 
     if (!election) return res.status(404).json({ success: false, error: { message: 'Election not found' } });
 
