@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { IBallotQuestion } from '../models/Election';
+import { AIService } from '../services/aiService';
+import { SchemaType } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_CLOUD_API_KEY || '');
 
 const QUESTION_TYPE_CONTEXT = `
 Available Question Types:
@@ -83,30 +83,6 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
     }
 
 
-    const cleanJsonResponse = (text: string) => {
-      try {
-        // First, check if it's already valid JSON
-        JSON.parse(text);
-        return text;
-      } catch (e) {
-        // If not, try to extract the first balanced JSON object
-        const match = text.match(/\{[\s\S]*\}/);
-        if (match) {
-          // Attempt to find the shortest prefix that is valid JSON to avoid greedy matching over multiple objects
-          let str = match[0];
-          for (let i = str.length; i > 0; i--) {
-            if (str[i-1] === '}') {
-              try {
-                const sub = str.substring(0, i);
-                JSON.parse(sub);
-                return sub;
-              } catch (e) {}
-            }
-          }
-        }
-        return text;
-      }
-    };
 
     let systemPrompt = "";
     let responseSchema: any = null;
@@ -179,41 +155,32 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
       `;
     }
 
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      tools: BALLOT_TOOLS,
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: responseSchema
-      }
+    const result = await AIService.generate({
+      prompt,
+      systemPrompt,
+      responseSchema,
+      tools: BALLOT_TOOLS
     });
-
-    const chat = model.startChat();
-    const result = await chat.sendMessage(systemPrompt);
-    const response = result.response;
     
     // Check for function calls
-    const calls = response.candidates?.[0]?.content?.parts?.filter(p => p.functionCall);
-    
-    if (calls && calls.length > 0) {
+    if (result.type === 'tool_call') {
       return res.status(200).json({
         success: true,
         data: {
           type: 'tool_call',
-          calls: calls.map(c => c.functionCall)
+          calls: result.calls,
+          provider: result.provider
         }
       });
     }
 
     // Default to structured JSON response
-    const text = cleanJsonResponse(response.text());
-    const parsed = JSON.parse(text);
-
     res.status(200).json({
       success: true,
       data: {
         type: step === 'clarify' ? 'clarification' : 'questions',
-        content: step === 'clarify' ? parsed.clarifications : parsed.questions
+        content: step === 'clarify' ? result.content.clarifications : result.content.questions,
+        provider: result.provider
       }
     });
   } catch (error: any) {
