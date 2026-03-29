@@ -82,7 +82,24 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Prompt is required' });
     }
 
+    // Parse context string into history array if possible
+    // Format: "User: msg\n\nAssistant: msg"
+    const history: any[] = [];
+    if (context) {
+      const parts = context.split('\n\n');
+      for (const part of parts) {
+        if (part.startsWith('User: ')) {
+          history.push({ role: 'user', content: part.replace('User: ', '') });
+        } else if (part.startsWith('Assistant: ')) {
+          history.push({ role: 'assistant', content: part.replace('Assistant: ', '') });
+        }
+      }
+    }
 
+    // Add current prompt to history if it's not already there
+    if (history.length === 0 || history[history.length - 1].content !== prompt) {
+      history.push({ role: 'user', content: prompt });
+    }
 
     let systemPrompt = "";
     let responseSchema: any = null;
@@ -110,10 +127,12 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
       systemPrompt = `
         You are an expert election consultant for ${orgType} elections. 
         The admin wants to create a ballot for "${electionTitle}".
-        Based on the prompt: "${prompt}", identify 2-3 critical pieces of information missing to create an industry-standard ballot.
+        Identify 2-3 critical pieces of information missing to create an industry-standard ballot.
         
         If you have enough information to perform actions (like adding a question), use the provided tools.
         Otherwise, return exactly 2-3 clarification questions in JSON format.
+        
+        Current User Request: ${prompt}
       `;
     } else {
       responseSchema = {
@@ -151,12 +170,11 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
         1. Use the most appropriate question types.
         2. Use tools to perform granular updates if requested.
         3. User Intent: ${prompt}
-        4. Additional Context: ${context}
       `;
     }
 
     const result = await AIService.generate({
-      prompt,
+      history,
       systemPrompt,
       responseSchema,
       tools: BALLOT_TOOLS
@@ -174,12 +192,24 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
       });
     }
 
-    // Default to structured JSON response
+    // Handle plain text reasoning/suggestions
+    if (result.type === 'message') {
+      return res.status(200).json({
+        success: true,
+        data: {
+          type: 'message',
+          message: result.message,
+          provider: result.provider
+        }
+      });
+    }
+
+    // Structured JSON response
     res.status(200).json({
       success: true,
       data: {
         type: step === 'clarify' ? 'clarification' : 'questions',
-        content: step === 'clarify' ? result.content.clarifications : result.content.questions,
+        content: step === 'clarify' ? result.content?.clarifications : result.content?.questions,
         provider: result.provider
       }
     });
