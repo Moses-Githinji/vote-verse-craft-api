@@ -30,22 +30,49 @@ const BALLOT_TOOLS: any = [
     functionDeclarations: [
       {
         name: "add_question",
-        description: "Adds a new question to the ballot. Useful for adding specific items, positions, or inquiries.",
+        description: "Adds a new question to the ballot with specific configurations.",
         parameters: {
           type: SchemaType.OBJECT,
           properties: {
             type: { 
               type: SchemaType.STRING, 
-              description: "The type of question (e.g., 'single', 'multi', 'ranked', 'grid_multiple', 'section')." 
+              description: "The type of question (e.g., 'single', 'multi', 'ranked', 'grid_multiple', 'section', 'short', 'paragraph', 'linear', 'rating', 'date', 'time', 'yesno', 'image_block', 'video_block')." 
             },
             title: { type: SchemaType.STRING, description: "The main text of the question." },
+            description: { type: SchemaType.STRING, description: "Optional subtitle or instructions." },
             options: { 
               type: SchemaType.ARRAY, 
               items: { type: SchemaType.STRING },
-              description: "List of choices for the question."
-            }
+              description: "List of choices for 'single', 'multi', 'dropdown', 'ranked' types."
+            },
+            required: { type: SchemaType.BOOLEAN, description: "Whether the voter MUST answer this." },
+            allowWriteIn: { type: SchemaType.BOOLEAN, description: "Allow voters to type their own answer (for 'single', 'multi')." },
+            allowNota: { type: SchemaType.BOOLEAN, description: "Add 'None of the Above' option." },
+            maxSelections: { type: SchemaType.NUMBER, description: "For 'multi' type, the maximum items a voter can pick." },
+            linearMin: { type: SchemaType.NUMBER, description: "Min value for 'linear' scale (usually 0 or 1)." },
+            linearMax: { type: SchemaType.NUMBER, description: "Max value for 'linear' scale (usually 5 or 10)." },
+            linearMinLabel: { type: SchemaType.STRING, description: "Label for the min side (e.g. 'Poor')." },
+            linearMaxLabel: { type: SchemaType.STRING, description: "Label for the max side (e.g. 'Excellent')." },
+            gridRows: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "Rows for grid types." },
+            gridColumns: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "Columns for grid types." }
           },
           required: ["type", "title"]
+        }
+      },
+      {
+        name: "update_question_config",
+        description: "Updates specific configuration for an existing question.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            id: { type: SchemaType.STRING, description: "The ID of the question to update." },
+            required: { type: SchemaType.BOOLEAN },
+            allowWriteIn: { type: SchemaType.BOOLEAN },
+            allowNota: { type: SchemaType.BOOLEAN },
+            maxSelections: { type: SchemaType.NUMBER },
+            description: { type: SchemaType.STRING }
+          },
+          required: ["id"]
         }
       },
       {
@@ -174,15 +201,24 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
         You are an AI Election Architect specializing in ${orgType} elections. 
         Your task is to build a professional, industry-standard ballot for "${electionTitle}".
         
-        Technical Context:
-        ${QUESTION_TYPE_CONTEXT}
+        Available Question Types and Capabilities:
+        - 'single': Multiple choice. Supports allowWriteIn, allowNota.
+        - 'multi': Checkboxes. Supports allowWriteIn, allowNota, maxSelections.
+        - 'ranked': Ranked choice voting.
+        - 'short': Single line text.
+        - 'paragraph': Multi-line text.
+        - 'linear': Scale (e.g., 1-10). Uses linearMin, linearMax, linearMinLabel, linearMaxLabel.
+        - 'rating': Star rating (1-5).
+        - 'grid_multiple' / 'grid_checkbox': Matrix questions. Uses gridRows, gridColumns.
+        - 'date' / 'time' / 'yesno': Specialized pickers.
+        - 'section': Header for organization.
         
         ${currentQuestions}
         
         GUIDELINES:
-        1. PRIORITIZE ACTIONS: Use tools (add_question, update_ballot_info, etc.) to perform the user's intent immediately.
-        2. BE AN ARCHITECT: If the user is unsure, suggest and implement the most common/best-practice structures for ${orgType} elections.
-        3. AVOID PASSIVITY: Do not ask for more detail if you can make a helpful proposal instead.
+        1. PRIORITIZE ACTIONS: Use tools (add_question, update_question_config, etc.) to perform the user's intent immediately.
+        2. CONFIGURE THOROUGHLY: Set 'required', 'allowWriteIn', 'maxSelections' etc. based on the context (e.g., Student Council positions usually allow write-ins).
+        3. BE AN ARCHITECT: Suggest and implement best-practice structures for ${orgType} elections.
         
         User Intent: ${prompt}
       `;
@@ -190,18 +226,19 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
 
     const result = await AIService.generate({
       history,
-      systemPrompt,
+      systemPrompt: systemPrompt + "\nIMPORTANT: Always provide a textual explanation of what you are doing, especially when using tools.",
       responseSchema,
       tools: BALLOT_TOOLS
     });
     
-    // Check for function calls
-    if (result.type === 'tool_call') {
+    // Check for mixed or function calls
+    if (result.type === 'mixed' || result.type === 'tool_call') {
       return res.status(200).json({
         success: true,
         data: {
-          type: 'tool_call',
+          type: result.type,
           calls: result.calls,
+          message: result.message,
           provider: result.provider
         }
       });
@@ -219,12 +256,13 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
       });
     }
 
-    // Structured JSON response
+    // Structured JSON response (clarifications or questions schema)
     res.status(200).json({
       success: true,
       data: {
         type: step === 'clarify' ? 'clarification' : 'questions',
         content: step === 'clarify' ? result.content?.clarifications : result.content?.questions,
+        message: result.message, // Include text if it arrived even with structured data
         provider: result.provider
       }
     });

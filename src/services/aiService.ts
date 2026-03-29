@@ -19,7 +19,7 @@ export interface AIProviderOptions {
 }
 
 export interface AIResponse {
-  type: 'content' | 'tool_call' | 'message';
+  type: 'content' | 'tool_call' | 'message' | 'mixed';
   content?: any;
   calls?: any[];
   message?: string;
@@ -125,30 +125,34 @@ export class AIService {
     const lastMessage = options.history[options.history.length - 1]?.content || "Please continue.";
     const result = await chat.sendMessage(lastMessage);
     const response = result.response;
+    const parts = response.candidates?.[0]?.content?.parts || [];
 
-    const calls = response.candidates?.[0]?.content?.parts?.filter(p => !!p.functionCall);
-    if (calls && calls.length > 0) {
+    const calls = parts.filter(p => !!p.functionCall).map(c => ({
+      name: c.functionCall!.name,
+      args: c.functionCall!.args
+    }));
+    
+    const textPart = parts.find(p => !!p.text)?.text || "";
+
+    if (calls.length > 0) {
       return { 
-        type: 'tool_call', 
-        calls: calls.map(c => ({
-          name: c.functionCall!.name,
-          args: c.functionCall!.args
-        })), 
+        type: textPart ? 'mixed' : 'tool_call', 
+        calls, 
+        message: textPart || undefined,
         provider: 'Gemini' 
       };
     }
 
-    const rawText = response.text();
     if (options.responseSchema) {
       try {
-        const text = this.cleanJsonResponse(rawText);
+        const text = this.cleanJsonResponse(textPart);
         return { type: 'content', content: JSON.parse(text), provider: 'Gemini' };
       } catch (e) {
-        return { type: 'message', message: rawText, provider: 'Gemini' };
+        return { type: 'message', message: textPart, provider: 'Gemini' };
       }
     }
 
-    return { type: 'message', message: rawText, provider: 'Gemini' };
+    return { type: 'message', message: textPart, provider: 'Gemini' };
   }
 
   private static async generateWithOpenAI(options: AIProviderOptions): Promise<AIResponse> {
@@ -174,16 +178,18 @@ export class AIService {
     });
 
     const message = response.choices[0].message;
+    const calls = message.tool_calls
+      ?.filter(tc => tc.type === 'function')
+      .map(tc => ({
+        name: tc.function.name,
+        args: JSON.parse(tc.function.arguments)
+      })) || [];
 
-    if (message.tool_calls && message.tool_calls.length > 0) {
+    if (calls.length > 0) {
       return {
-        type: 'tool_call',
-        calls: message.tool_calls
-          .filter(tc => tc.type === 'function')
-          .map(tc => ({
-            name: tc.function.name,
-            args: JSON.parse(tc.function.arguments)
-          })),
+        type: message.content ? 'mixed' : 'tool_call',
+        calls,
+        message: message.content || undefined,
         provider: 'OpenAI'
       };
     }
@@ -226,17 +232,21 @@ export class AIService {
       }))
     });
 
-    const toolUse = response.content.find(p => p.type === 'tool_use');
-    if (toolUse && toolUse.type === 'tool_use') {
-      return {
-        type: 'tool_call',
-        calls: [{ name: toolUse.name, args: toolUse.input }],
-        provider: 'Claude'
-      };
-    }
+    const calls = response.content
+      .filter(p => p.type === 'tool_use')
+      .map((tu: any) => ({ name: tu.name, args: tu.input }));
 
     const textPart = response.content.find(p => p.type === 'text');
     const rawText = textPart && textPart.type === 'text' ? textPart.text : '';
+    
+    if (calls.length > 0) {
+      return {
+        type: rawText ? 'mixed' : 'tool_call',
+        calls,
+        message: rawText || undefined,
+        provider: 'Claude'
+      };
+    }
     
     if (options.responseSchema) {
       try {
