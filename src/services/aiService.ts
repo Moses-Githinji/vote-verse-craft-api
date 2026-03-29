@@ -109,13 +109,13 @@ export class AIService {
     const result = await chat.sendMessage(options.systemPrompt);
     const response = result.response;
 
-    const calls = response.candidates?.[0]?.content?.parts?.filter(p => p.functionCall);
+    const calls = response.candidates?.[0]?.content?.parts?.filter(p => !!p.functionCall);
     if (calls && calls.length > 0) {
       return { 
         type: 'tool_call', 
         calls: calls.map(c => ({
-          name: c.functionCall.name,
-          args: c.functionCall.args
+          name: c.functionCall!.name,
+          args: c.functionCall!.args
         })), 
         provider: 'Gemini' 
       };
@@ -152,10 +152,12 @@ export class AIService {
     if (message.tool_calls && message.tool_calls.length > 0) {
       return {
         type: 'tool_call',
-        calls: message.tool_calls.map(tc => ({
-          name: tc.function.name,
-          args: JSON.parse(tc.function.arguments)
-        })),
+        calls: message.tool_calls
+          .filter(tc => tc.type === 'function')
+          .map(tc => ({
+            name: tc.function.name,
+            args: JSON.parse(tc.function.arguments)
+          })),
         provider: 'OpenAI'
       };
     }
