@@ -76,7 +76,7 @@ const BALLOT_TOOLS: any = [
 
 export const generateBallotQuestions = async (req: Request, res: Response) => {
   try {
-    const { prompt, orgType, electionTitle, step = 'generate', context = '' } = req.body;
+    const { prompt, orgType, electionTitle, step = 'generate', context = '', ballotState = [] } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ success: false, message: 'Prompt is required' });
@@ -124,13 +124,20 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
         }
       };
 
+      const currentQuestions = ballotState.length > 0 
+        ? `Current Ballot contains:\n${ballotState.map((q: any, i: number) => `${i+1}. ${q.title} (${q.type})`).join('\n')}`
+        : "The ballot is currently empty.";
+
       systemPrompt = `
-        You are an expert election consultant for ${orgType} elections. 
-        The admin wants to create a ballot for "${electionTitle}".
-        Identify 2-3 critical pieces of information missing to create an industry-standard ballot.
+        You are an AI Election Architect for ${orgType} elections. 
+        Your goal is to build a perfect ballot for "${electionTitle}".
         
-        If you have enough information to perform actions (like adding a question), use the provided tools.
-        Otherwise, return exactly 2-3 clarification questions in JSON format.
+        ${currentQuestions}
+        
+        BE PROACTIVE:
+        1. If the user suggests a number of positions or a school setup, IMMEDIATELY use the 'add_question' tool to create them.
+        2. DO NOT just say "I'm listening" or ask for more detail if you can reasonably assume standard roles (e.g., President, VP, etc. for schools).
+        3. If you do need more info, identify 2-3 critical missing pieces but ONLY after proposing what you can.
         
         Current User Request: ${prompt}
       `;
@@ -159,17 +166,25 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
         }
       };
 
+      const currentQuestions = ballotState.length > 0 
+        ? `Current Ballot contains:\n${ballotState.map((q: any, i: number) => `${i+1}. ${q.title} (${q.type})`).join('\n')}`
+        : "The ballot is currently empty.";
+
       systemPrompt = `
-        You are an expert election consultant specializing in ${orgType} elections. 
-        Your task is to generate professional, industry-standard ballot questions for an election titled "${electionTitle}".
+        You are an AI Election Architect specializing in ${orgType} elections. 
+        Your task is to build a professional, industry-standard ballot for "${electionTitle}".
         
         Technical Context:
         ${QUESTION_TYPE_CONTEXT}
         
-        Requirements:
-        1. Use the most appropriate question types.
-        2. Use tools to perform granular updates if requested.
-        3. User Intent: ${prompt}
+        ${currentQuestions}
+        
+        GUIDELINES:
+        1. PRIORITIZE ACTIONS: Use tools (add_question, update_ballot_info, etc.) to perform the user's intent immediately.
+        2. BE AN ARCHITECT: If the user is unsure, suggest and implement the most common/best-practice structures for ${orgType} elections.
+        3. AVOID PASSIVITY: Do not ask for more detail if you can make a helpful proposal instead.
+        
+        User Intent: ${prompt}
       `;
     }
 
