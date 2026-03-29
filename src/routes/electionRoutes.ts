@@ -5,7 +5,8 @@ import {
   getActiveElection,
   createElection, 
   updateElection,
-  updateElectionStatus 
+  updateElectionStatus,
+  resetVoters,
 } from '../controllers/electionController';
 import { authenticate, requireRole, requireOrgAccess } from '../middlewares/auth';
 
@@ -22,3 +23,4 @@ electionRouter.get('/:id', authenticate, requireOrgAccess, getElectionById);
 electionRouter.post('/', authenticate, requireRole(['super_admin', 'admin']), createElection);
 electionRouter.put('/:id', authenticate, requireRole(['super_admin', 'admin']), requireOrgAccess, updateElection);
 electionRouter.put('/:id/status', authenticate, requireRole(['super_admin', 'admin']), requireOrgAccess, updateElectionStatus);
+electionRouter.post('/:id/reset-voters', authenticate, requireRole(['super_admin', 'admin']), requireOrgAccess, resetVoters);

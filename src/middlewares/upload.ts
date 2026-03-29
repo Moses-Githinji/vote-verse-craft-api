@@ -1,8 +1,8 @@
 import multer from 'multer';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import CloudinaryStorage from 'multer-storage-cloudinary';
 import cloudinary from '../config/cloudinary';
 
-const imageStorage = new CloudinaryStorage({
+const imageStorage = (CloudinaryStorage as any)({
   cloudinary: cloudinary,
   params: {
     folder: 'shulepal/candidates',

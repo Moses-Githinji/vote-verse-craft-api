@@ -1,16 +1,35 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export type ElectionStatus = 'draft' | 'scheduled' | 'active' | 'paused' | 'completed' | 'cancelled';
-export type BallotQuestionType = 'single' | 'multi' | 'ranked' | 'yesno';
+export type BallotQuestionType = 
+  | 'short' | 'paragraph' | 'single' | 'multi' | 'dropdown' | 'file' 
+  | 'linear' | 'rating' | 'grid_multiple' | 'grid_checkbox' 
+  | 'date' | 'time' | 'ranked' | 'yesno'
+  | 'section' | 'image_block' | 'video_block';
 
 export interface IBallotQuestion {
   id: string;
   type: BallotQuestionType;
   title: string;
+  description?: string;
   options: string[];
+  optionImages?: Record<string, string>;
+  imageUrl?: string;
+  videoUrl?: string;
   allowWriteIn: boolean;
   allowNota: boolean;
   maxSelections?: number;
+  required?: boolean;
+  linearMin?: number;
+  linearMax?: number;
+  linearMinLabel?: string;
+  linearMaxLabel?: string;
+  ratingMax?: number;
+  gridRows?: string[];
+  gridColumns?: string[];
+  dateFormat?: 'date' | 'time' | 'datetime';
+  fileTypes?: string[];
+  maxFileSize?: number;
 }
 
 export interface IElection extends Document {
@@ -35,14 +54,29 @@ const ballotQuestionSchema = new Schema(
     id: { type: String, required: true },
     type: {
       type: String,
-      enum: ['single', 'multi', 'ranked', 'yesno'],
+      enum: ['short', 'paragraph', 'single', 'multi', 'dropdown', 'file', 'linear', 'rating', 'grid_multiple', 'grid_checkbox', 'date', 'time', 'ranked', 'yesno', 'section', 'image_block', 'video_block'],
       required: true,
     },
-    title: { type: String, required: true },
-    options: { type: [String], required: true },
+    title: { type: String, required: false },
+    description: String,
+    options: { type: [String], default: [] },
+    optionImages: { type: Map, of: String },
+    imageUrl: String,
+    videoUrl: String,
     allowWriteIn: { type: Boolean, default: false },
     allowNota: { type: Boolean, default: false },
-    maxSelections: { type: Number },
+    maxSelections: Number,
+    required: Boolean,
+    linearMin: Number,
+    linearMax: Number,
+    linearMinLabel: String,
+    linearMaxLabel: String,
+    ratingMax: Number,
+    gridRows: [String],
+    gridColumns: [String],
+    dateFormat: { type: String, enum: ['date', 'time', 'datetime'] },
+    fileTypes: [String],
+    maxFileSize: Number,
   },
   { _id: false }
 );

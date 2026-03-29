@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { Election } from '../models/Election';
 import { Candidate } from '../models/Candidate';
 import { Organization } from '../models/Organization';
+import { Voter } from '../models/Voter';
 import { electionSchema } from '../validators';
 
 export const getElections = async (req: Request, res: Response) => {
@@ -177,5 +178,51 @@ export const updateElectionStatus = async (req: Request, res: Response) => {
     res.json({ success: true, data: { election, reason } });
   } catch (error: any) {
     res.status(400).json({ success: false, error: { message: error.message } });
+  }
+};
+
+export const resetVoters = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userOrgId = (req as any).userOrgId;
+
+    if (!mongoose.Types.ObjectId.isValid(id as string)) {
+      return res.status(400).json({ success: false, error: { message: 'Invalid election ID format' } });
+    }
+
+    if (!userOrgId) {
+      return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
+    }
+
+    // Ensure the election belongs to the caller's organization
+    const election = await Election.findOne({ _id: id, organizationId: userOrgId });
+    if (!election) {
+      return res.status(404).json({ success: false, error: { message: 'Election not found' } });
+    }
+
+    // Only allow reset when the election has already ended
+    const now = new Date();
+    if (election.endDate > now) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Cannot reset voters: election has not ended yet' },
+      });
+    }
+
+    // Bulk-reset all voters in this organization
+    const result = await Voter.updateMany(
+      { organizationId: userOrgId },
+      { $set: { hasVoted: false }, $unset: { votedAt: '', voteSessionId: '' } }
+    );
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Voter statuses have been reset successfully',
+        modifiedCount: result.modifiedCount,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { message: error.message } });
   }
 };

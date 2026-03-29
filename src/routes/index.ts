@@ -8,12 +8,15 @@ import { resultsRouter } from './resultsRoutes';
 import { auditRouter } from './auditRoutes';
 import { dashboardRouter } from './dashboardRoutes';
 import { candidateRouter } from './candidateRoutes';
+import { mediaRouter } from './mediaRoutes';
+import { aiRouter } from './aiRoutes';
 
 export const apiRouter = Router();
 
 // Routes
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/organizations', orgRouter); // Changed to orgRouter to match import, assuming instruction had a typo with organizationRouter
+apiRouter.use('/media', mediaRouter);
 
 // Organization specific routes - org type removed, org derived from JWT token
 apiRouter.use('/voters', voterRouter);
@@ -23,3 +26,4 @@ apiRouter.use('/vote', voteRouter);
 apiRouter.use('/elections/:id/results', resultsRouter);
 apiRouter.use('/audit', auditRouter);
 apiRouter.use('/dashboard', dashboardRouter);
+apiRouter.use('/ai', aiRouter);
