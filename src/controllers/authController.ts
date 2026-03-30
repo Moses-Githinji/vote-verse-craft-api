@@ -71,7 +71,7 @@ export const login = async (req: Request, res: Response) => {
         tokens: {
           accessToken,
           refreshToken,
-          expiresIn: 3600
+          expiresIn: 86400
         }
       }
     });
