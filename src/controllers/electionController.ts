@@ -4,6 +4,7 @@ import { Election } from '../models/Election';
 import { Candidate } from '../models/Candidate';
 import { Organization } from '../models/Organization';
 import { Voter } from '../models/Voter';
+import { Vote } from '../models/Vote';
 import { electionSchema } from '../validators';
 
 export const getElections = async (req: Request, res: Response) => {
@@ -220,6 +221,43 @@ export const resetVoters = async (req: Request, res: Response) => {
       data: {
         message: 'Voter statuses have been reset successfully',
         modifiedCount: result.modifiedCount,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { message: error.message } });
+  }
+};
+
+export const deleteElection = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userOrgId = (req as any).userOrgId;
+
+    if (!mongoose.Types.ObjectId.isValid(id as string)) {
+      return res.status(400).json({ success: false, error: { message: 'Invalid election ID format' } });
+    }
+
+    if (!userOrgId) {
+      return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
+    }
+
+    // Ensure the election belongs to the organization
+    const election = await Election.findOne({ _id: id, organizationId: userOrgId });
+    if (!election) {
+      return res.status(404).json({ success: false, error: { message: 'Election not found' } });
+    }
+
+    // Delete related data first
+    await Candidate.deleteMany({ electionId: id });
+    await Vote.deleteMany({ electionId: id });
+    
+    // Finally delete the election
+    await Election.findByIdAndDelete(id);
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Election and all related data (candidates, votes) deleted successfully',
       },
     });
   } catch (error: any) {
