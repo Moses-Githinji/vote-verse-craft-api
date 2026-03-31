@@ -23,7 +23,7 @@ electionRouter.get('/', authenticate, requireOrgAccess, getElections);
 electionRouter.get('/:id', authenticate, requireOrgAccess, getElectionById);
 
 // Other methods - require full authentication
-electionRouter.post('/', authenticate, requireRole(['super_admin', 'admin']), createElection);
+electionRouter.post('/', authenticate, requireRole(['super_admin', 'admin']), requireOrgAccess, createElection);
 electionRouter.put('/:id', authenticate, requireRole(['super_admin', 'admin']), requireOrgAccess, updateElection);
 electionRouter.put('/:id/status', authenticate, requireRole(['super_admin', 'admin']), requireOrgAccess, updateElectionStatus);
 electionRouter.post('/:id/reset-voters', authenticate, requireRole(['super_admin', 'admin']), requireOrgAccess, resetVoters);

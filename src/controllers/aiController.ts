@@ -103,29 +103,24 @@ const BALLOT_TOOLS: any = [
 
 export const generateBallotQuestions = async (req: Request, res: Response) => {
   try {
-    const { prompt, orgType, electionTitle, step = 'generate', context = '', ballotState = [] } = req.body;
+    const { prompt, orgType, electionTitle, step = 'generate', history = [], ballotState = [] } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ success: false, message: 'Prompt is required' });
     }
 
-    // Parse context string into history array if possible
-    // Format: "User: msg\n\nAssistant: msg"
-    const history: any[] = [];
-    if (context) {
-      const parts = context.split('\n\n');
-      for (const part of parts) {
-        if (part.startsWith('User: ')) {
-          history.push({ role: 'user', content: part.replace('User: ', '') });
-        } else if (part.startsWith('Assistant: ')) {
-          history.push({ role: 'assistant', content: part.replace('Assistant: ', '') });
-        }
-      }
-    }
+    // Helper: Prune history to keep only recent messages for short-term memory
+    const pruneHistory = (msgs: any[], max = 10) => {
+      if (msgs.length <= max) return msgs;
+      // Keep first system/init message if any, and last N-1 messages
+      return msgs.slice(-max);
+    };
 
-    // Add current prompt to history if it's not already there
-    if (history.length === 0 || history[history.length - 1].content !== prompt) {
-      history.push({ role: 'user', content: prompt });
+    const activeHistory = pruneHistory(history);
+
+    // Add current prompt to history if it's not already there (at the end)
+    if (activeHistory.length === 0 || activeHistory[activeHistory.length - 1].content !== prompt) {
+      activeHistory.push({ role: 'user', content: prompt });
     }
 
     let systemPrompt = "";
@@ -151,9 +146,7 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
         }
       };
 
-      const currentQuestions = ballotState.length > 0 
-        ? `Current Ballot contains:\n${ballotState.map((q: any, i: number) => `${i+1}. ${q.title} (${q.type})`).join('\n')}`
-        : "The ballot is currently empty.";
+      const currentBallot = JSON.stringify(ballotState, null, 2);
 
       systemPrompt = `
         You are a PROACTIVE AI Election Architect for ${orgType} elections. 
@@ -163,10 +156,12 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
         1. ACTIONS FIRST: If the user describes an election or gives an okay, IMMEDIATELY use the tools to build it.
         2. PAST TENSE CONFIRMATION: Only report: "I have now [Action]" after execution.
         3. NO VERBAL LOOPS: Don't promise to build; just build.
+        4. CHECK HISTORY: Look at previous messages to see if a request has multiple steps.
         
-        ${currentQuestions}
+        LONG-TERM MEMORY (Current Ballot State):
+        ${currentBallot}
         
-        Current User Request: ${prompt}
+        User Instruction: ${prompt}
       `;
     } else {
       responseSchema = {
@@ -193,9 +188,7 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
         }
       };
 
-      const currentQuestions = ballotState.length > 0 
-        ? `Current Ballot contains:\n${ballotState.map((q: any, i: number) => `${i+1}. ${q.title} (${q.type})`).join('\n')}`
-        : "The ballot is currently empty.";
+      const currentBallot = JSON.stringify(ballotState, null, 2);
 
       systemPrompt = `
         You are a PROACTIVE AI Election Architect specializing in ${orgType} elections. 
@@ -206,6 +199,7 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
         2. PAST TENSE CONFIRMATION: Only after a tool is successfully called should you report: "I have now [Action]".
         3. BE AN ARCHITECT: If the user says "Build it" or "Okay," automatically implement the most common/best-practice structures for ${orgType} elections.
         4. NO VERBAL LOOPS: If you already performed an action, do not promise it again. Look at the Current Ballot state.
+        5. MULTI-STEP REMEMBRANCE: If the user gave multiple instructions in one message, ensure you address ALL of them. Check the history if you feel you missed a step.
         
         Available Question Types and Capabilities:
         - 'single': Multiple choice. Supports allowWriteIn, allowNota.
@@ -219,14 +213,15 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
         - 'date' / 'time' / 'yesno': Specialized pickers.
         - 'section': Header for organization.
         
-        ${currentQuestions}
+        LONG-TERM MEMORY (Current Ballot State):
+        ${currentBallot}
         
         User Intent: ${prompt}
       `;
     }
 
     const result = await AIService.generate({
-      history,
+      history: activeHistory,
       systemPrompt: systemPrompt + "\nIMPORTANT: Always provide a textual explanation of what you are doing, especially when using tools.",
       responseSchema,
       tools: BALLOT_TOOLS

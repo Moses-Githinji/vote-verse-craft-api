@@ -18,7 +18,16 @@ apiRouter.use('/auth', authRouter);
 apiRouter.use('/organizations', orgRouter); // Changed to orgRouter to match import, assuming instruction had a typo with organizationRouter
 apiRouter.use('/media', mediaRouter);
 
-// Organization specific routes - org type removed, org derived from JWT token
+// Organization specific routes - org type support added
+apiRouter.use('/:orgType/voters', voterRouter);
+apiRouter.use('/:orgType/elections', electionRouter);
+apiRouter.use('/:orgType/elections/:electionId/candidates', candidateRouter);
+apiRouter.use('/:orgType/dashboard', dashboardRouter);
+apiRouter.use('/:orgType/elections/:id/results', resultsRouter);
+apiRouter.use('/:orgType/audit', auditRouter);
+apiRouter.use('/:orgType/ai', aiRouter);
+
+// Original routes for backward compatibility
 apiRouter.use('/voters', voterRouter);
 apiRouter.use('/elections', electionRouter);
 apiRouter.use('/elections/:electionId/candidates', candidateRouter);

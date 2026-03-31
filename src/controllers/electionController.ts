@@ -17,15 +17,34 @@ export const getElections = async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
     }
 
-    const { status } = req.query;
+    const { status, page = 1, limit = 5 } = req.query;
     const query: any = { organizationId: userOrgId };
     
     if (status) {
       query.status = status;
     }
 
-    const elections = await Election.find(query).sort({ createdAt: -1 });
-    res.json({ success: true, data: { elections } });
+    const pg = parseInt(page as string) || 1;
+    const lim = parseInt(limit as string) || 5;
+    const skip = (pg - 1) * lim;
+
+    const [elections, total] = await Promise.all([
+      Election.find(query).sort({ createdAt: -1 }).skip(skip).limit(lim),
+      Election.countDocuments(query)
+    ]);
+
+    res.json({ 
+      success: true, 
+      data: { 
+        elections,
+        pagination: {
+          total,
+          page: pg,
+          limit: lim,
+          pages: Math.ceil(total / lim)
+        }
+      } 
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, error: { message: error.message } });
   }

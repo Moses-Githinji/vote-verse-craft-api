@@ -16,6 +16,6 @@ export const voteLimiter = rateLimit({
 
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: isDev ? 100 : 5,
+  max: isDev ? 1000 : 5,
   message: { success: false, error: 'Too many login attempts, please try again later' },
 });
