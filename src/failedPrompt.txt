@@ -1,0 +1,3 @@
+I noticed that ballot configs whose status is draft aren't being returned from this backend. Do we have an endpoint that can return them, as well as the following ballot categories; previous or past elections, in configuration - you can use inConfig here and set it to true or false depending on the stage a ballot config is in, and active.
+
+Create a concrete execution plan, I'll review it and give you the goahead

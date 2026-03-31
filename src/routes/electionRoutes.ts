@@ -8,6 +8,7 @@ import {
   updateElectionStatus,
   resetVoters,
   deleteElection,
+  getElectionsCategorized,
 } from '../controllers/electionController';
 import { authenticate, requireRole, requireOrgAccess } from '../middlewares/auth';
 
@@ -15,6 +16,7 @@ export const electionRouter = Router({ mergeParams: true });
 
 // Special routes first
 electionRouter.get('/active', authenticate, requireOrgAccess, getActiveElection);
+electionRouter.get('/summary', authenticate, requireOrgAccess, getElectionsCategorized);
 
 // GET requests - require auth and org access for voters to view elections
 electionRouter.get('/', authenticate, requireOrgAccess, getElections);

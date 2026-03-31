@@ -17,7 +17,14 @@ export const getElections = async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
     }
 
-    const elections = await Election.find({ organizationId: userOrgId });
+    const { status } = req.query;
+    const query: any = { organizationId: userOrgId };
+    
+    if (status) {
+      query.status = status;
+    }
+
+    const elections = await Election.find(query).sort({ createdAt: -1 });
     res.json({ success: true, data: { elections } });
   } catch (error: any) {
     res.status(500).json({ success: false, error: { message: error.message } });
@@ -259,6 +266,31 @@ export const deleteElection = async (req: Request, res: Response) => {
       data: {
         message: 'Election and all related data (candidates, votes) deleted successfully',
       },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { message: error.message } });
+  }
+};
+
+export const getElectionsCategorized = async (req: Request, res: Response) => {
+  try {
+    const userOrgId = (req as any).userOrgId;
+
+    if (!userOrgId) {
+      return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
+    }
+
+    const allElections = await Election.find({ organizationId: userOrgId }).sort({ createdAt: -1 });
+
+    const categorized = {
+      active: allElections.filter(e => e.status === 'active' || e.status === 'scheduled'),
+      past: allElections.filter(e => e.status === 'completed' || e.status === 'cancelled'),
+      inConfig: allElections.filter(e => e.status === 'draft')
+    };
+
+    res.json({
+      success: true,
+      data: categorized
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: { message: error.message } });

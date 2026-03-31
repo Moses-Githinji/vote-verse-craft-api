@@ -100,8 +100,16 @@ const electionSchema = new Schema(
     settings: { type: Map, of: Schema.Types.Mixed, default: {} },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+  }
 );
+
+electionSchema.virtual('inConfig').get(function() {
+  return this.status === 'draft';
+});
 
 electionSchema.index({ organizationId: 1, status: 1, startDate: 1 });
 electionSchema.index({ title: 'text' });
