@@ -21,8 +21,10 @@ export const electionSchema = z.object({
   description: z.string().max(1000).optional(),
   electionType: z.string(),
   votingMethod: z.string(),
+  status: z.enum(['draft', 'scheduled', 'active', 'paused', 'completed', 'cancelled']).optional(),
   startDate: z.string().datetime({ offset: true }),
   endDate: z.string().datetime({ offset: true }),
+  timezone: z.string().optional().default('UTC'),
   ballotQuestions: z.array(z.object({
     id: z.string().optional(),
     type: z.enum(['short', 'paragraph', 'single', 'multi', 'dropdown', 'file', 'linear', 'rating', 'grid_multiple', 'grid_checkbox', 'date', 'time', 'ranked', 'yesno']),

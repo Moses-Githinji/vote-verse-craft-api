@@ -17,6 +17,7 @@ export const apiRouter = Router();
 // Routes
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/simulate', simulationRouter);
+apiRouter.use('/:orgType/simulate', simulationRouter);
 apiRouter.use('/organizations', orgRouter); // Changed to orgRouter to match import, assuming instruction had a typo with organizationRouter
 apiRouter.use('/media', mediaRouter);
 
