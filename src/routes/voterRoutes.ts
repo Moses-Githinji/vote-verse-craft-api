@@ -3,7 +3,8 @@ import {
   loginVoter, 
   getVoters, 
   createVoter, 
-  bulkCreateVoters 
+  bulkCreateVoters,
+  deleteAllVoters
 } from '../controllers/voterController';
 import { authenticate, requireRole, requireOrgAccess } from '../middlewares/auth';
 import { loginLimiter } from '../middlewares/rateLimiter';
@@ -24,3 +25,4 @@ voterRouter.use(requireRole(['super_admin', 'admin']));
 voterRouter.get('/', getVoters);
 voterRouter.post('/', createVoter);
 voterRouter.post('/bulk', uploadCSV.single('csvFile'), bulkCreateVoters);
+voterRouter.delete('/', deleteAllVoters);

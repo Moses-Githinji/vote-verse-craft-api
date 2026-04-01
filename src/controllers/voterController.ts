@@ -230,3 +230,38 @@ export const bulkCreateVoters = async (req: Request, res: Response) => {
      res.status(400).json({ success: false, error: { message: error.message } });
   }
 };
+
+export const deleteAllVoters = async (req: Request, res: Response) => {
+  try {
+    const userOrgId = (req as any).userOrgId;
+    const userRole = (req as any).userRole; // Assuming role is available in request
+    const { all } = req.query;
+
+    let query: any = {};
+    let message = "";
+
+    if (all === 'true' && userRole === 'super_admin') {
+      // Global delete - only for super_admin
+      message = "All voter records deleted from the database";
+    } else if (userOrgId) {
+      // Organization-specific delete
+      query.organizationId = userOrgId;
+      message = `All voter records deleted for organization ${userOrgId}`;
+    } else {
+      return res.status(403).json({ success: false, error: { message: 'Unauthorized or Organization not found' } });
+    }
+
+    const result = await Voter.deleteMany(query);
+    
+    res.json({
+      success: true,
+      data: {
+        deletedCount: result.deletedCount,
+        message
+      }
+    });
+
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { message: error.message } });
+  }
+};
