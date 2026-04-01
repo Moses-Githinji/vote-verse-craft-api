@@ -10,11 +10,13 @@ import { dashboardRouter } from './dashboardRoutes';
 import { candidateRouter } from './candidateRoutes';
 import { mediaRouter } from './mediaRoutes';
 import { aiRouter } from './aiRoutes';
+import simulationRouter from './simulationRoutes';
 
 export const apiRouter = Router();
 
 // Routes
 apiRouter.use('/auth', authRouter);
+apiRouter.use('/simulate', simulationRouter);
 apiRouter.use('/organizations', orgRouter); // Changed to orgRouter to match import, assuming instruction had a typo with organizationRouter
 apiRouter.use('/media', mediaRouter);
 

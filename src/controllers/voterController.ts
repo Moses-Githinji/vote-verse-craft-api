@@ -133,11 +133,14 @@ export const getVoters = async (req: Request, res: Response) => {
     const userOrgId = (req as any).userOrgId;
     const { page = 1, limit = 20, search, stream, hasVoted } = req.query;
     
+    console.log(`[getVoters] Fetching voters for org: ${userOrgId}, page: ${page}, limit: ${limit}`);
+    
     if (!userOrgId) {
       return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
     }
 
     const query: any = { organizationId: userOrgId };
+    console.log(`[getVoters] Query:`, JSON.stringify(query));
     if (search) {
       query.$text = { $search: search as string };
     }

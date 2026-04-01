@@ -271,3 +271,67 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const analyzeBallot = async (req: Request, res: Response) => {
+  try {
+    const { questions, orgType, title, description = "" } = req.body;
+
+    if (!questions || !Array.isArray(questions)) {
+      return res.status(400).json({ success: false, message: 'Questions array is required' });
+    }
+
+    const ballotPrompt = `
+      Election Title: ${title}
+      Organization Type: ${orgType}
+      Description: ${description}
+      
+      Ballot Structure:
+      ${JSON.stringify(questions, null, 2)}
+    `;
+
+    const systemPrompt = `
+      You are an expert Election Auditor and UX Specialist. 
+      Your task is to analyze the provided ballot structure and provide constructive, professional feedback.
+      
+      Evaluate based on:
+      1. Clarity: Are questions easy to understand?
+      2. Neutrality: Is there any leading or biased language?
+      3. Completeness: Are there missing essential categories for a ${orgType} election?
+      4. UX: Is the flow logical?
+      
+      Provide your analysis in the specified JSON format.
+    `;
+
+    const responseSchema: any = {
+      type: SchemaType.OBJECT,
+      properties: {
+        score: { type: SchemaType.NUMBER, description: "Quality score from 1-100" },
+        feedback: { type: SchemaType.STRING, description: "Overall summary of the ballot quality" },
+        suggestions: { 
+          type: SchemaType.ARRAY, 
+          items: { type: SchemaType.STRING },
+          description: "Actionable suggestions for improvement"
+        },
+        complianceCheck: { type: SchemaType.STRING, description: "Check against standard ${orgType} election practices" }
+      },
+      required: ["score", "feedback", "suggestions", "complianceCheck"]
+    };
+
+    const result = await AIService.generate({
+      history: [{ role: 'user', content: ballotPrompt }],
+      systemPrompt,
+      responseSchema
+    });
+
+    res.json({
+      success: true,
+      data: result.content
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to analyze ballot',
+      error: error.message
+    });
+  }
+};

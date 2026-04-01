@@ -7,3 +7,8 @@ coverage
 *.log
 .DS_Store
 frontend-integration-guide.txt
+
+# Simulation
+/simulate/
+/src/controllers/simulationController.ts
+/src/routes/simulationRoutes.ts
