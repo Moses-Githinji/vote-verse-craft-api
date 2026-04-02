@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { AuditLog } from '../models/AuditLog';
 import { Organization } from '../models/Organization';
+import { Voter } from '../models/Voter';
+import { Vote } from '../models/Vote';
+import { Election } from '../models/Election';
 
 export const getAuditLogs = async (req: Request, res: Response) => {
   try {
@@ -50,6 +53,47 @@ export const getAuditLogs = async (req: Request, res: Response) => {
           total,
           totalPages: Math.ceil(total / Number(limit))
         }
+      }
+    });
+
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { message: error.message } });
+  }
+};
+
+export const getIntegrityCheck = async (req: Request, res: Response) => {
+  try {
+    const userOrgId = (req as any).userOrgId;
+    if (!userOrgId) return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
+
+    const totalVoters = await Voter.countDocuments({ organizationId: userOrgId });
+    const elections = await Election.find({ organizationId: userOrgId }).select('title status');
+
+    const electionIntegrity = await Promise.all(elections.map(async (e) => {
+      const votesCount = await Vote.countDocuments({ electionId: e._id });
+      const isValid = votesCount <= totalVoters;
+      
+      return {
+        electionId: e._id,
+        title: e.title,
+        status: e.status,
+        votesCast: votesCount,
+        totalVoters,
+        isValid,
+        discrepancy: votesCount > totalVoters ? votesCount - totalVoters : 0
+      };
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          totalVoters,
+          electionCount: elections.length,
+          allValid: electionIntegrity.every(ei => ei.isValid)
+        },
+        diagnostics: electionIntegrity,
+        timestamp: new Date()
       }
     });
 
