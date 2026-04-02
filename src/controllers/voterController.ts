@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Voter } from '../models/Voter';
+import { Vote } from '../models/Vote';
 import { Election } from '../models/Election';
 import { Organization } from '../models/Organization';
 import { processVoterCSV } from '../utils/csvProcessor';
@@ -249,6 +250,15 @@ export const deleteAllVoters = async (req: Request, res: Response) => {
       message = `All voter records deleted for organization ${userOrgId}`;
     } else {
       return res.status(403).json({ success: false, error: { message: 'Unauthorized or Organization not found' } });
+    }
+
+    // Identify voters to be deleted for cascading
+    const votersToDelete = await Voter.find(query).select('_id');
+    const voterIds = votersToDelete.map(v => v._id);
+
+    // Cascade delete votes
+    if (voterIds.length > 0) {
+      await Vote.deleteMany({ voterId: { $in: voterIds } });
     }
 
     const result = await Voter.deleteMany(query);
