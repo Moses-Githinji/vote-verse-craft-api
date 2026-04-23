@@ -1,7 +1,23 @@
 import { Request, Response } from 'express';
-import { IBallotQuestion } from '../models/Election';
 import { AIService } from '../services/aiService';
 import { SchemaType } from '@google/generative-ai';
+import { EntitlementService } from '../services/EntitlementService';
+
+// In-memory job store (consider Redis or DB for production)
+const aiJobs = new Map<string, {
+  status: 'pending' | 'completed' | 'failed';
+  data?: any;
+  error?: string;
+  timestamp: Date;
+}>();
+
+// Cleanup old jobs every hour
+setInterval(() => {
+  const oneHourAgo = new Date(Date.now() - 3600000);
+  for (const [id, job] of aiJobs.entries()) {
+    if (job.timestamp < oneHourAgo) aiJobs.delete(id);
+  }
+}, 3600000);
 
 
 const QUESTION_TYPE_CONTEXT = `
@@ -109,16 +125,29 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Prompt is required' });
     }
 
-    // Helper: Prune history to keep only recent messages for short-term memory
+    // --- Entitlement Check ---
+    const orgId = (req as any).userOrgId;
+    if (!orgId) return res.status(403).json({ success: false, message: 'Organization required' });
+    
+    const gate = await EntitlementService.canUse(orgId, 'aiBallotArchitect');
+    if (!gate.allowed) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'FEATURE_LOCKED',
+          message: 'AI Ballot Architect is a Pro feature. Upgrade your plan to unlock AI assistance.',
+          currentPlan: gate.currentPlan,
+          requiredPlan: 'pro'
+        }
+      });
+    }
+
     const pruneHistory = (msgs: any[], max = 10) => {
       if (msgs.length <= max) return msgs;
-      // Keep first system/init message if any, and last N-1 messages
       return msgs.slice(-max);
     };
 
     const activeHistory = pruneHistory(history);
-
-    // Add current prompt to history if it's not already there (at the end)
     if (activeHistory.length === 0 || activeHistory[activeHistory.length - 1].content !== prompt) {
       activeHistory.push({ role: 'user', content: prompt });
     }
@@ -147,21 +176,10 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
       };
 
       const currentBallot = JSON.stringify(ballotState, null, 2);
-
       systemPrompt = `
         You are a PROACTIVE AI Election Architect for ${orgType} elections. 
-        Your goal is to build a perfect ballot for "${electionTitle}".
-        
-        STRICT BEHAVIORAL RULES:
-        1. ACTIONS FIRST: If the user describes an election or gives an okay, IMMEDIATELY use the tools to build it.
-        2. PAST TENSE CONFIRMATION: Only report: "I have now [Action]" after execution.
-        3. NO VERBAL LOOPS: Don't promise to build; just build.
-        4. CHECK HISTORY: Look at previous messages to see if a request has multiple steps.
-        
-        LONG-TERM MEMORY (Current Ballot State):
-        ${currentBallot}
-        
-        User Instruction: ${prompt}
+        Build a perfect ballot for "${electionTitle}".
+        LONG-TERM MEMORY: ${currentBallot}
       `;
     } else {
       responseSchema = {
@@ -189,79 +207,31 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
       };
 
       const currentBallot = JSON.stringify(ballotState, null, 2);
-
       systemPrompt = `
-        You are a PROACTIVE AI Election Architect specializing in ${orgType} elections. 
-        Your task is to build a professional, industry-standard ballot for "${electionTitle}".
-        
-        STRICT BEHAVIORAL RULES:
-        1. ACTIONS FIRST: Do not say "I will do X" or "I am going to build X". Execute the tools IMMEDIATELY.
-        2. PAST TENSE CONFIRMATION: Only after a tool is successfully called should you report: "I have now [Action]".
-        3. BE AN ARCHITECT: If the user says "Build it" or "Okay," automatically implement the most common/best-practice structures for ${orgType} elections.
-        4. NO VERBAL LOOPS: If you already performed an action, do not promise it again. Look at the Current Ballot state.
-        5. MULTI-STEP REMEMBRANCE: If the user gave multiple instructions in one message, ensure you address ALL of them. Check the history if you feel you missed a step.
-        
-        Available Question Types and Capabilities:
-        - 'single': Multiple choice. Supports allowWriteIn, allowNota.
-        - 'multi': Checkboxes. Supports allowWriteIn, allowNota, maxSelections.
-        - 'ranked': Ranked choice voting.
-        - 'short': Single line text.
-        - 'paragraph': Multi-line text.
-        - 'linear': Scale (e.g., 1-10). Uses linearMin, linearMax, linearMinLabel, linearMaxLabel.
-        - 'rating': Star rating (1-5).
-        - 'grid_multiple' / 'grid_checkbox': Matrix questions. Uses gridRows, gridColumns.
-        - 'date' / 'time' / 'yesno': Specialized pickers.
-        - 'section': Header for organization.
-        
-        LONG-TERM MEMORY (Current Ballot State):
-        ${currentBallot}
-        
-        User Intent: ${prompt}
+        You are a PROACTIVE AI Election Architect for ${orgType} elections. 
+        Build a professional ballot for "${electionTitle}".
+        LONG-TERM MEMORY: ${currentBallot}
       `;
     }
 
     const result = await AIService.generate({
       history: activeHistory,
-      systemPrompt: systemPrompt + "\nIMPORTANT: Always provide a textual explanation of what you are doing, especially when using tools.",
+      systemPrompt: systemPrompt + "\nIMPORTANT: Always provide a textual explanation.",
       responseSchema,
       tools: BALLOT_TOOLS
     });
-    
-    // Check for mixed or function calls
-    if (result.type === 'mixed' || result.type === 'tool_call') {
-      return res.status(200).json({
-        success: true,
-        data: {
-          type: result.type,
-          calls: result.calls,
-          message: result.message,
-          provider: result.provider
-        }
-      });
-    }
 
-    // Handle plain text reasoning/suggestions
-    if (result.type === 'message') {
-      return res.status(200).json({
-        success: true,
-        data: {
-          type: 'message',
-          message: result.message,
-          provider: result.provider
-        }
-      });
-    }
-
-    // Structured JSON response (clarifications or questions schema)
-    res.status(200).json({
+    return res.json({
       success: true,
       data: {
-        type: step === 'clarify' ? 'clarification' : 'questions',
-        content: step === 'clarify' ? result.content?.clarifications : result.content?.questions,
-        message: result.message, // Include text if it arrived even with structured data
-        provider: result.provider
+        type: result.type === 'content' ? (step === 'clarify' ? 'clarification' : 'questions') : result.type,
+        content: result.type === 'content' ? (step === 'clarify' ? result.content?.clarifications : result.content?.questions) : result.content,
+        calls: result.calls,
+        message: result.message,
+        provider: result.provider,
       }
     });
+
   } catch (error: any) {
     console.error('AI Generation Error:', error);
     res.status(500).json({
@@ -272,12 +242,43 @@ export const generateBallotQuestions = async (req: Request, res: Response) => {
   }
 };
 
+export const getAIJobStatus = async (req: Request, res: Response) => {
+  const { jobId } = req.params;
+  const job = aiJobs.get(jobId as string);
+
+  if (!job) {
+    return res.status(404).json({ success: false, message: 'Job not found' });
+  }
+
+  res.json({
+    success: true,
+    data: job
+  });
+};
+
 export const analyzeBallot = async (req: Request, res: Response) => {
   try {
     const { questions, orgType, title, description = "" } = req.body;
 
     if (!questions || !Array.isArray(questions)) {
       return res.status(400).json({ success: false, message: 'Questions array is required' });
+    }
+
+    // --- Entitlement Check ---
+    const orgId = (req as any).userOrgId;
+    if (!orgId) return res.status(403).json({ success: false, message: 'Organization required' });
+    
+    const gate = await EntitlementService.canUse(orgId, 'aiBallotArchitect');
+    if (!gate.allowed) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'FEATURE_LOCKED',
+          message: 'AI Ballot Analysis is a Pro feature. Upgrade your plan to unlock AI auditing.',
+          currentPlan: gate.currentPlan,
+          requiredPlan: 'pro'
+        }
+      });
     }
 
     const ballotPrompt = `

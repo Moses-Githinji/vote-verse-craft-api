@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { apiRouter } from './routes';
 import { apiLimiter } from './middlewares/rateLimiter';
+import { optionalAuth } from './middlewares/auth';
 import { errorHandler } from './middlewares/errorHandler';
 import { requestLogger } from './middlewares/requestLogger';
 
@@ -22,6 +23,7 @@ const corsOptions = {
     // List of allowed origins
     const allowedOrigins = [
       'http://localhost:8081',
+      'http://localhost:8080',
       'http://localhost:3000',
       'https://kurapap-admin.vercel.app'
     ];
@@ -38,11 +40,14 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '5mb' }));
-app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Log all incoming requests
 app.use(requestLogger);
+
+// Add optional auth before rate limiter to enable session awareness
+app.use('/api', optionalAuth);
 
 // Global rate limiter
 app.use('/api', apiLimiter);

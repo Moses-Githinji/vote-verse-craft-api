@@ -70,8 +70,16 @@ export const getIntegrityCheck = async (req: Request, res: Response) => {
     const elections = await Election.find({ organizationId: userOrgId }).select('title status');
 
     const electionIntegrity = await Promise.all(elections.map(async (e) => {
-      const votesCount = await Vote.countDocuments({ electionId: e._id });
-      const isValid = votesCount <= totalVoters;
+      const votes = await Vote.find({ electionId: e._id }).select('voterId');
+      const votesCount = votes.length;
+      
+      // Perform deep validation: Check if each vote's voter exists
+      const voterIds = votes.map(v => v.voterId);
+      const existingVoters = await Voter.find({ _id: { $in: voterIds } }).select('_id');
+      const existingVoterIds = new Set(existingVoters.map(v => v._id.toString()));
+      
+      const orphanedVotes = votes.filter(v => !existingVoterIds.has(v.voterId.toString()));
+      const isValid = orphanedVotes.length === 0 && votesCount <= totalVoters;
       
       return {
         electionId: e._id,
@@ -80,7 +88,7 @@ export const getIntegrityCheck = async (req: Request, res: Response) => {
         votesCast: votesCount,
         totalVoters,
         isValid,
-        discrepancy: votesCount > totalVoters ? votesCount - totalVoters : 0
+        discrepancy: Math.max(votesCount > totalVoters ? votesCount - totalVoters : 0, orphanedVotes.length)
       };
     }));
 

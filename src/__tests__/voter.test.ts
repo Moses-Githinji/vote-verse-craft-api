@@ -6,6 +6,10 @@ import jwt from 'jsonwebtoken';
 
 jest.mock('../models/Organization');
 jest.mock('../models/Voter');
+jest.mock('../services/EntitlementService');
+import { EntitlementService } from '../services/EntitlementService';
+import { Subscription } from '../models/Subscription';
+jest.mock('../models/Subscription');
 
 describe('Voter API', () => {
   let authToken: string;
@@ -23,6 +27,11 @@ describe('Voter API', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  beforeEach(() => {
+    (EntitlementService.checkUsage as jest.Mock).mockResolvedValue({ allowed: true, current: 0, limit: 50, currentPlan: 'starter' });
+    (EntitlementService.getEffectivePlan as jest.Mock).mockResolvedValue({ planId: 'starter', features: {}, status: 'active', warning: false });
   });
 
   it('should create a voter successfully', async () => {

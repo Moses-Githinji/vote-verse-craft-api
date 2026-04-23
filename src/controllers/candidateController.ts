@@ -149,3 +149,69 @@ export const deleteCandidate = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: { message: error.message } });
   }
 };
+
+export const deleteCandidatesBulk = async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+    const userOrgId = (req as any).userOrgId;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, error: { message: 'IDs array is required' } });
+    }
+
+    // To verify candidates belong to the user's organization, we need to check their elections
+    const candidates = await Candidate.find({ _id: { $in: ids } });
+    const electionIds = candidates.map(c => c.electionId);
+    
+    const validElections = await Election.find({ 
+      _id: { $in: electionIds }, 
+      organizationId: userOrgId 
+    }).select('_id');
+    
+    const validElectionIds = validElections.map(e => e._id.toString());
+    const actualIdsToDelete = candidates
+      .filter(c => validElectionIds.includes(c.electionId.toString()))
+      .map(c => c._id);
+
+    if (actualIdsToDelete.length === 0) {
+      return res.status(404).json({ success: false, error: { message: 'No valid candidates found to delete' } });
+    }
+
+    const result = await Candidate.deleteMany({ _id: { $in: actualIdsToDelete } });
+
+    res.json({
+      success: true,
+      data: {
+        deletedCount: result.deletedCount,
+        message: `${result.deletedCount} candidates removed successfully`,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { message: error.message } });
+  }
+};
+
+export const deleteAllCandidates = async (req: Request, res: Response) => {
+  try {
+    const userOrgId = (req as any).userOrgId;
+
+    if (!userOrgId) {
+      return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
+    }
+
+    const orgElections = await Election.find({ organizationId: userOrgId }).select('_id');
+    const electionIds = orgElections.map(e => e._id);
+
+    const result = await Candidate.deleteMany({ electionId: { $in: electionIds } });
+
+    res.json({
+      success: true,
+      data: {
+        deletedCount: result.deletedCount,
+        message: `All candidates (${result.deletedCount}) removed for the organization`,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { message: error.message } });
+  }
+};
