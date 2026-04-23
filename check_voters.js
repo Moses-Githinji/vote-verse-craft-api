@@ -1,5 +1,6 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
-const MONGODB_URI = 'mongodb+srv://ndirangu23githinji_db_user:G3JRCA2k5CsshglJ@cluster0.hl67ehe.mongodb.net/?appName=Cluster0';
+const MONGODB_URI = process.env.MONGODB_URI;
 
 async function checkVoters() {
     try {
