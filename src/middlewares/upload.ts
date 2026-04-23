@@ -1,9 +1,10 @@
 import multer from 'multer';
 import CloudinaryStorage from 'multer-storage-cloudinary';
-import cloudinary from '../config/cloudinary';
+import cloudinaryRoot from 'cloudinary';
+import '../config/cloudinary';
 
 const imageStorage = (CloudinaryStorage as any)({
-  cloudinary: cloudinary,
+  cloudinary: cloudinaryRoot,
   params: {
     folder: 'shulepal/candidates',
     allowed_formats: ['jpg', 'jpeg', 'png'],

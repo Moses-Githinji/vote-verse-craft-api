@@ -6,6 +6,7 @@ import { Organization } from '../models/Organization';
 import { Voter } from '../models/Voter';
 import { Vote } from '../models/Vote';
 import { electionSchema } from '../validators';
+import { EntitlementService } from '../services/EntitlementService';
 
 export const getElections = async (req: Request, res: Response) => {
   try {
@@ -110,6 +111,26 @@ export const createElection = async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
     }
 
+    // Map "inConfig" status from frontend to "draft" for backend validation compatibility
+    if (req.body.status === 'inConfig') {
+      req.body.status = 'draft';
+    }
+
+    // --- Usage Limit Check ---
+    const usage = await EntitlementService.checkUsage(userOrgId, 'active_elections');
+    if (!usage.allowed) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'LIMIT_REACHED',
+          message: `Active election limit reached (${usage.limit}). Upgrade your plan to host more simultaneous elections.`,
+          current: usage.current,
+          limit: usage.limit,
+          requiredPlan: usage.requiredPlan
+        }
+      });
+    }
+
     const validatedData = electionSchema.parse(req.body);
 
     // Auto-generate ballot question IDs if not provided
@@ -125,7 +146,7 @@ export const createElection = async (req: Request, res: Response) => {
       ...validatedData,
       ballotQuestions,
       organizationId: userOrgId,
-      createdBy: req.user.id
+      createdBy: (req as any).user.id
     });
 
     if (validatedData.candidates && validatedData.candidates.length > 0) {
@@ -145,6 +166,11 @@ export const createElection = async (req: Request, res: Response) => {
 export const updateElection = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    // Map "inConfig" status from frontend to "draft" for backend validation compatibility
+    if (req.body.status === 'inConfig') {
+      req.body.status = 'draft';
+    }
+
     const validatedData = electionSchema.partial().parse(req.body);
     const userOrgId = (req as any).userOrgId;
 
@@ -194,8 +220,8 @@ export const updateElectionStatus = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: { message: 'Invalid election ID format' } });
     }
 
-    const election = await Election.findByIdAndUpdate(
-      id as string, 
+    const election = await Election.findOneAndUpdate(
+      { _id: id, organizationId: (req as any).userOrgId }, 
       { status },
       { new: true }
     );
@@ -235,6 +261,9 @@ export const resetVoters = async (req: Request, res: Response) => {
         error: { message: 'Cannot reset voters: election has not ended yet' },
       });
     }
+
+    // Delete all votes associated with this election
+    await Vote.deleteMany({ electionId: id });
 
     // Bulk-reset all voters in this organization
     const result = await Voter.updateMany(
@@ -310,6 +339,79 @@ export const getElectionsCategorized = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: categorized
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { message: error.message } });
+  }
+};
+
+export const deleteElectionsBulk = async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+    const userOrgId = (req as any).userOrgId;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, error: { message: 'IDs array is required' } });
+    }
+
+    const electionsToDelete = await Election.find({ 
+      _id: { $in: ids }, 
+      organizationId: userOrgId 
+    }).select('_id');
+    
+    const actualIdsToDelete = electionsToDelete.map(e => e._id);
+
+    if (actualIdsToDelete.length === 0) {
+      return res.status(404).json({ success: false, error: { message: 'No valid elections found to delete' } });
+    }
+
+    // Delete related data first
+    await Candidate.deleteMany({ electionId: { $in: actualIdsToDelete } });
+    await Vote.deleteMany({ electionId: { $in: actualIdsToDelete } });
+    
+    // Finally delete the elections
+    const result = await Election.deleteMany({ _id: { $in: actualIdsToDelete } });
+
+    res.json({
+      success: true,
+      data: {
+        deletedCount: result.deletedCount,
+        message: `${result.deletedCount} elections and all related data (candidates, votes) deleted successfully`,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { message: error.message } });
+  }
+};
+
+export const deleteAllElections = async (req: Request, res: Response) => {
+  try {
+    const userOrgId = (req as any).userOrgId;
+
+    if (!userOrgId) {
+      return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
+    }
+
+    const electionsToDelete = await Election.find({ organizationId: userOrgId }).select('_id');
+    const electionIds = electionsToDelete.map(e => e._id);
+
+    if (electionIds.length === 0) {
+      return res.json({ success: true, data: { deletedCount: 0, message: 'No elections found to delete' } });
+    }
+
+    // Cascade delete
+    await Candidate.deleteMany({ electionId: { $in: electionIds } });
+    await Vote.deleteMany({ electionId: { $in: electionIds } });
+    
+    // Wipe elections
+    const result = await Election.deleteMany({ organizationId: userOrgId });
+
+    res.json({
+      success: true,
+      data: {
+        deletedCount: result.deletedCount,
+        message: `All elections (${result.deletedCount}) and related data purged for the organization`,
+      },
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: { message: error.message } });

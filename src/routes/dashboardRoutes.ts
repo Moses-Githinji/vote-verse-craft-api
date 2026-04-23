@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getDashboardStats } from '../controllers/dashboardController';
+import { getDashboardStats, getDashboardSummary } from '../controllers/dashboardController';
 import { authenticate, requireRole, requireOrgAccess } from '../middlewares/auth';
 
 export const dashboardRouter = Router({ mergeParams: true });
@@ -9,3 +9,4 @@ dashboardRouter.use(requireRole(['super_admin', 'admin']));
 dashboardRouter.use(requireOrgAccess);
 
 dashboardRouter.get('/stats', getDashboardStats);
+dashboardRouter.get('/summary', getDashboardSummary);

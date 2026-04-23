@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IOrganization extends Document {
-  orgType: 'school' | 'sacco' | 'church' | 'political';
+  orgType: 'school' | 'sacco' | 'church' | 'political' | 'chama' | 'professional_body' | 'other';
   name: string;
   email: string;
   password?: string;
@@ -17,8 +17,9 @@ const organizationSchema = new Schema(
   {
     orgType: {
       type: String,
-      enum: ['school', 'sacco', 'church', 'political'],
+      enum: ['school', 'sacco', 'church', 'political', 'chama', 'professional_body', 'other'],
       required: true,
+      default: 'other'
     },
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },

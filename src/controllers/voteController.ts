@@ -58,11 +58,19 @@ export const castVote = async (req: Request, res: Response) => {
         switch (question.type) {
           case 'single':
           case 'yesno':
+          case 'dropdown':
+          case 'linear':
+          case 'rating':
             if (typeof answer !== 'string') {
               return res.status(400).json({ success: false, error: { message: `Question ${questionId} requires a single string answer` } });
             }
             if (!question.allowWriteIn && !validOptions.includes(answer as string)) {
-              return res.status(400).json({ success: false, error: { message: `Invalid option for ${questionId}: ${answer}` } });
+              // For linear/rating, validOptions might be empty if options aren't used, check range
+              if ((question.type === 'linear' || question.type === 'rating') && !isNaN(Number(answer))) {
+                 // Numeric check suffices for now
+              } else if (answer !== 'NOTA') {
+                return res.status(400).json({ success: false, error: { message: `Invalid option for ${questionId}: ${answer}` } });
+              }
             }
             break;
 
@@ -74,7 +82,7 @@ export const castVote = async (req: Request, res: Response) => {
               return res.status(400).json({ success: false, error: { message: `Question ${questionId}: max ${question.maxSelections} selections allowed` } });
             }
             for (const selection of (answer as string[])) {
-              if (!validOptions.includes(selection)) {
+              if (!validOptions.includes(selection) && selection !== 'NOTA') {
                 return res.status(400).json({ success: false, error: { message: `Invalid option for ${questionId}: ${selection}` } });
               }
             }
@@ -85,9 +93,46 @@ export const castVote = async (req: Request, res: Response) => {
               return res.status(400).json({ success: false, error: { message: `Question ${questionId} requires a ranked array` } });
             }
             for (const ranked of (answer as string[])) {
-              if (!validOptions.includes(ranked)) {
+              if (!validOptions.includes(ranked) && ranked !== 'NOTA') {
                 return res.status(400).json({ success: false, error: { message: `Invalid ranked option for ${questionId}: ${ranked}` } });
               }
+            }
+            break;
+
+          case 'grid_multiple':
+            if (typeof answer !== 'object' || Array.isArray(answer)) {
+              return res.status(400).json({ success: false, error: { message: `Question ${questionId} requires a row-to-option mapping` } });
+            }
+            for (const [row, col] of Object.entries(answer as Record<string, any>)) {
+              if (typeof col !== 'string' || !validOptions.includes(col)) {
+                return res.status(400).json({ success: false, error: { message: `Invalid option in row ${row} for ${questionId}: ${col}` } });
+              }
+            }
+            break;
+
+          case 'grid_checkbox':
+            if (typeof answer !== 'object' || Array.isArray(answer)) {
+              return res.status(400).json({ success: false, error: { message: `Question ${questionId} requires a row-to-options mapping` } });
+            }
+            for (const [row, cols] of Object.entries(answer as Record<string, any>)) {
+              if (!Array.isArray(cols)) {
+                return res.status(400).json({ success: false, error: { message: `Row ${row} in ${questionId} requires an array of selections` } });
+              }
+              for (const col of cols) {
+                if (!validOptions.includes(col)) {
+                  return res.status(400).json({ success: false, error: { message: `Invalid option in row ${row} for ${questionId}: ${col}` } });
+                }
+              }
+            }
+            break;
+
+          case 'short':
+          case 'paragraph':
+          case 'date':
+          case 'time':
+          case 'file':
+            if (typeof answer !== 'string') {
+              return res.status(400).json({ success: false, error: { message: `Question ${questionId} requires a string response` } });
             }
             break;
         }

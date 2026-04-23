@@ -4,6 +4,7 @@ import { Election, IBallotQuestion } from '../models/Election';
 import { Voter } from '../models/Voter';
 import { Organization } from '../models/Organization';
 import mongoose from 'mongoose';
+import { EntitlementService } from '../services/EntitlementService';
 
 /**
  * Tallies results question-by-question from raw vote documents.
@@ -53,6 +54,13 @@ const tallyResults = (votes: any[], ballotQuestions: IBallotQuestion[]) => {
             tallies[q.id][answer[0]] = (tallies[q.id][answer[0]] || 0) + 1;
           }
           break;
+
+        case 'rating':
+          if (typeof answer === 'number' || typeof answer === 'string') {
+            const ratingKey = String(answer);
+            tallies[q.id][ratingKey] = (tallies[q.id][ratingKey] || 0) + 1;
+          }
+          break;
       }
     }
   }
@@ -68,9 +76,39 @@ export const getResults = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: { message: 'Invalid election ID format' } });
     }
 
-    const election = await Election.findById(id as string);
+    const election = await Election.findOne({ 
+      _id: id, 
+      organizationId: (req as any).userOrgId 
+    });
+    if (!election) return res.status(404).json({ success: false, error: { message: 'Election not found or access denied' } });
 
-    if (!election) return res.status(404).json({ success: false, error: { message: 'Election not found' } });
+    // ── Results Gate ──────────────────────────────────────────────────────────
+    const orgId = election.organizationId.toString();
+    const gate = await EntitlementService.canViewResults(orgId, id as string);
+
+    if (gate.partial && gate.previewData) {
+      // Org can vote but hasn't paid — return blurred preview
+      return res.json({
+        success: true,
+        data: {
+          resultsLocked: true,
+          preview: gate.previewData,
+          fullResults: null,
+        },
+      });
+    }
+
+    if (!gate.allowed && !gate.partial) {
+      return res.status(402).json({
+        success: false,
+        error: {
+          code: 'RESULTS_LOCKED',
+          message: 'Your subscription has lapsed. Please renew to view election results.',
+          upgradeUrl: '/billing/upgrade',
+        },
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     const totalVoters = await Voter.countDocuments({ organizationId: election.organizationId });
     const votesCast = await Vote.countDocuments({ electionId: election._id });
@@ -99,6 +137,7 @@ export const getResults = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: {
+        resultsLocked: false,
         election: {
           id: election._id,
           title: election.title,
@@ -116,3 +155,4 @@ export const getResults = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: { message: error.message } });
   }
 };
+

@@ -1,0 +1,369 @@
+VoteVerse Subscription System — Frontend Integration Guide
+==========================================================
+
+Base URL: https://<api-host>/api/v1
+All requests require: Authorization: Bearer <token>
+
+
+=====================================================================
+1. PLAN LIMITS REFERENCE
+=====================================================================
+
+Feature                     | starter    | pro        | enterprise
+----------------------------|------------|------------|------------
+Max Voters                  | 50         | 1,000      | Unlimited
+Max Active Elections        | 1          | 5          | Unlimited
+Max Certificate Generations | 1          | 5          | Unlimited
+Ballot Types                | basic only | standard   | + ranked
+Analytics                   | Summary    | Detail PDF | AI + Audit
+AI Ballot Architect         | No         | Yes        | Yes
+AI Insights (Analysis)      | No         | No         | Yes
+Audit Trail PDF             | No         | Yes        | Yes
+Branding                    | VoteVerse  | Custom Logo| Whitelabel
+
+Ballot type tiers:
+  basic    -> single, yesno, multi
+  standard -> adds: dropdown, linear, rating, paragraph, short,
+              date, time, file, grid_multiple, grid_checkbox,
+              section, image_block, video_block
+  all      -> adds: ranked
+
+
+=====================================================================
+2. SUBSCRIPTION ENDPOINTS
+=====================================================================
+
+--- GET /subscription ---
+Returns the org's current plan, status, and full entitlements.
+Call on app load and store in global state.
+
+Response:
+{
+  "success": true,
+  "data": {
+    "subscription": {
+      "planId": "starter",
+      "planName": "Starter (Free)",
+      "status": "active",
+      "currentPeriodStart": "2026-04-20T17:08:22.000Z",
+      "currentPeriodEnd": "2027-04-20T17:08:22.000Z",
+      "gracePeriodEnd": null,
+      "trialEndsAt": null,
+      "cancelAtPeriodEnd": false,
+      "electionIntegrityOverride": false
+    },
+    "entitlements": {
+      "maxVoters": 50,
+      "maxActiveElections": 1,
+      "maxCertificateGenerations": 1,
+      "ballotAccess": "basic",
+      "analyticsLevel": "summary",
+      "branding": "voteverse",
+      "offlineSupport": false,
+      "auditTrailPdf": false,
+      "aiInsights": false,
+      "prioritySupport": false
+    },
+    "warning": false,
+    "warningMessage": null
+  }
+}
+
+
+--- GET /subscription/usage ---
+Live usage counters for dashboard progress bars/gauges.
+
+Response:
+{
+  "success": true,
+  "data": {
+    "planId": "starter",
+    "planName": "Starter (Free)",
+    "usage": {
+      "voters": {
+        "current": 42,
+        "limit": 50,
+        "percentUsed": 84
+      },
+      "activeElections": {
+        "current": 1,
+        "limit": 1,
+        "percentUsed": 100
+      }
+    }
+  }
+}
+
+NOTE: limit: null means unlimited — render as "∞" and hide progress bar.
+
+
+--- PUT /subscription/plan ---
+Self-service plan upgrade/downgrade.
+
+Request body:
+{ "planId": "pro" }
+
+Response:
+{
+  "success": true,
+  "data": {
+    "message": "Plan updated to Pro (Growth)",
+    "subscription": {
+      "planId": "pro",
+      "status": "active",
+      "currentPeriodEnd": "2027-05-20T00:00:00.000Z"
+    }
+  }
+}
+
+
+--- PUT /subscription/cancel ---
+Mark subscription to cancel at end of current period.
+
+Response:
+{
+  "success": true,
+  "data": {
+    "message": "Subscription will be canceled at the end of the current period (2027-04-20).",
+    "cancelAtPeriodEnd": true,
+    "currentPeriodEnd": "2027-04-20T17:08:22.000Z"
+  }
+}
+
+
+=====================================================================
+3. ERROR RESPONSE CONTRACTS (Handle Globally in API Client)
+=====================================================================
+
+All enforcement errors return HTTP 402 Payment Required.
+
+--- LIMIT_REACHED ---
+Triggered when creating voters or elections beyond the plan cap.
+
+{
+  "success": false,
+  "error": {
+    "code": "LIMIT_REACHED",
+    "message": "You've reached your starter plan limit of 50 voters.",
+    "limitReached": true,
+    "current": 50,
+    "limit": 50,
+    "currentPlan": "starter",
+    "requiredPlan": "pro",
+    "upgradeUrl": "/billing/upgrade"
+  }
+}
+
+UI RECOMMENDATION:
+  Show an "Upgrade to [requiredPlan]" modal — NOT a generic error toast.
+  This is a conversion opportunity. Use requiredPlan to name the target tier.
+
+
+--- FEATURE_NOT_AVAILABLE ---
+Triggered when accessing a feature not on the org's current plan.
+
+{
+  "success": false,
+  "error": {
+    "code": "FEATURE_NOT_AVAILABLE",
+    "message": "This feature is not available on your current plan.",
+    "currentPlan": "pro",
+    "subscriptionStatus": "active",
+    "upgradeUrl": "/billing/upgrade"
+  }
+}
+
+UI RECOMMENDATION:
+  Proactively blur/lock the UI element using entitlements from
+  GET /subscription. The 402 is a safety net for direct API calls.
+
+
+--- RESULTS_LOCKED ---
+Triggered when subscription has fully lapsed and no override is set.
+
+{
+  "success": false,
+  "error": {
+    "code": "RESULTS_LOCKED",
+    "message": "Your subscription has lapsed. Please renew to view election results.",
+    "upgradeUrl": "/billing/upgrade"
+  }
+}
+
+
+=====================================================================
+4. THE RESULTS GATE (Critical Feature — Read Carefully)
+=====================================================================
+
+Endpoint: GET /:orgType/elections/:id/results
+
+Three possible response shapes:
+
+
+SHAPE A — Full results (subscription active/grace period)
+---------------------------------------------------------
+{
+  "success": true,
+  "data": {
+    "resultsLocked": false,
+    "election": {
+      "id": "...",
+      "title": "Student Council Elections 2026",
+      "status": "completed",
+      "totalVoters": 400,
+      "votesCast": 312,
+      "turnoutPercentage": 78.0
+    },
+    "results": [ ... ],
+    "ballotQuestions": [ ... ]
+  }
+}
+
+
+SHAPE B — Partial preview (past_due + electionIntegrityOverride = true)
+----------------------------------------------------------------------
+The election ran successfully but results are payment-gated.
+
+{
+  "success": true,
+  "data": {
+    "resultsLocked": true,
+    "preview": {
+      "totalVoters": 400,
+      "votesCast": 312,
+      "turnoutPercent": 78.0,
+      "disputeCount": 0,
+      "message": "Your election completed successfully and all votes are safely recorded. Clear your outstanding balance to unlock the full results and audit report."
+    },
+    "fullResults": null
+  }
+}
+
+UI RECOMMENDATION:
+  Render a blurred/greyed results panel showing the preview stats
+  (e.g. "78% turnout · 0 disputes detected") with a prominent
+  "Pay to Unlock Results" CTA overlay on top.
+
+
+SHAPE C — Hard lock (past_due, no override set)
+----------------------------------------------
+HTTP 402 with RESULTS_LOCKED error code (see Section 3).
+
+
+=====================================================================
+5. GRACE PERIOD WARNING BANNER
+=====================================================================
+
+When an org is past_due but still within the 5-day grace window,
+GET /subscription returns:
+
+  "warning": true,
+  "warningMessage": "Your payment is overdue. You have 3 day(s) remaining..."
+
+UI RECOMMENDATION:
+  Show a persistent yellow warning banner at the top of the admin
+  dashboard. All features still work during this window.
+
+
+=====================================================================
+6. SUBSCRIPTION STATUS REFERENCE
+=====================================================================
+
+Status                | Access               | Recommended Banner
+----------------------|----------------------|--------------------------------
+trialing              | Full access          | "Trial: X days remaining"
+active                | Full access          | None
+past_due              | Full (grace period)  | Yellow warning banner
+past_due_restricted   | Voting allowed only  | Red "Pay to unlock results"
+canceled              | Starter limits only  | Red "Subscription ended"
+expired               | Starter limits only  | Red "Subscription expired"
+
+NOTE: canceled and expired orgs are degraded to starter limits,
+not locked out. They can still run one election with up to 50 voters.
+
+
+=====================================================================
+7. PROACTIVE UI FEATURE GATING (Recommended Pattern)
+=====================================================================
+
+Do NOT wait for a 402. Use entitlements from GET /subscription to
+conditionally render or disable features before the user clicks.
+
+// Pseudocode examples
+const { entitlements, subscription } = useSubscription();
+
+// Lock AI Architect for starter plans
+<Button
+  disabled={!entitlements.aiBallotArchitect}
+  tooltip="Upgrade to Pro to use AI Ballot Architect"
+>
+  Generate with AI
+</Button>
+
+// Lock AI Insights for non-enterprise plans
+<Button
+  disabled={!entitlements.aiInsights}
+  tooltip="Upgrade to Enterprise to use AI Insights"
+>
+  AI Analysis
+</Button>
+
+// Hide ranked-choice option in ballot builder
+const canUseRanked = entitlements.ballotAccess === 'all';
+
+// Voter usage progress bar
+<UsageBar
+  current={usage.voters.current}
+  limit={usage.voters.limit}   // null = render as infinity
+  label="Voters"
+/>
+
+// Show upgrade prompt when approaching limit
+if (usage.voters.percentUsed >= 80) {
+  showUpgradeNudge("You're using 80% of your voter limit.");
+}
+
+
+=====================================================================
+8. SUPER ADMIN ENDPOINTS
+=====================================================================
+
+These endpoints require a super_admin role JWT.
+
+GET  /subscription/admin/all
+  List all org subscriptions (paginated).
+  Query params: ?page=1&limit=20&status=past_due&planId=starter
+
+PUT  /subscription/admin/:orgId/status
+  Manually set an org's subscription status.
+  Request body:
+  {
+    "status": "past_due",       // required
+    "planId": "pro",            // optional — change plan at same time
+    "gracePeriodDays": 5        // optional — defaults to 5
+  }
+
+PUT  /subscription/admin/:orgId/override
+  Toggle election integrity override.
+  When true: voting allowed, results gated.
+  When false: full lock (if subscription is restricted).
+  Request body:
+  {
+    "electionIntegrityOverride": true
+  }
+
+
+=====================================================================
+9. INITIALIZING THE DATABASE (One-Time Setup)
+=====================================================================
+
+Run this before testing against the API:
+
+  npx ts-node src/seed.ts
+
+This creates:
+  - 3 Plan documents: starter, pro, enterprise
+  - A default "starter" Subscription for every existing Organization
+
+For any new organization created after the seed runs, a starter
+subscription is automatically created on their first API call.

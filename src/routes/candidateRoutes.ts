@@ -3,7 +3,9 @@ import {
   getCandidates, 
   createCandidate, 
   updateCandidate, 
-  deleteCandidate 
+  deleteCandidate,
+  deleteCandidatesBulk,
+  deleteAllCandidates
 } from '../controllers/candidateController';
 import { authenticate, requireRole, requireOrgAccess, optionalAuth } from '../middlewares/auth';
 import { uploadImage } from '../middlewares/upload';
@@ -33,4 +35,6 @@ candidateRouter.get('/', getCandidates);
 // Using upload.single('profilePicture') to handle image form uploads
 candidateRouter.post('/', uploadImage.single('profilePicture'), createCandidate);
 candidateRouter.put('/:candidateId', uploadImage.single('profilePicture'), updateCandidate);
+candidateRouter.post('/delete-bulk', deleteCandidatesBulk);
+candidateRouter.delete('/', deleteAllCandidates);
 candidateRouter.delete('/:candidateId', deleteCandidate);

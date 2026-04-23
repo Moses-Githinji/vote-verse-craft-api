@@ -5,6 +5,7 @@ import { Candidate } from '../models/Candidate';
 import { Election } from '../models/Election';
 import { Vote } from '../models/Vote';
 import mongoose from 'mongoose';
+import { writeAuditLog } from '../utils/audit';
 
 export const generateSimulationData = async (req: Request, res: Response) => {
   try {
@@ -21,6 +22,19 @@ export const generateSimulationData = async (req: Request, res: Response) => {
 
       console.log(`[generateSimulationData] Generating for existing org: ${org.name} (${org._id})`);
       await generateVotersForOrg(org, orgType);
+      
+      // Audit log simulation generation
+      await writeAuditLog({
+        organizationId: org._id,
+        action: 'simulation_voters_generated',
+        resourceType: 'simulation',
+        resourceId: org._id as any,
+        userId: (req as any).user?.id,
+        ipAddress: (req as any).ip,
+        userAgent: (req as any).get('User-Agent'),
+        metadata: { orgType, voterCount: 100 }
+      });
+
       return res.json({ 
         success: true, 
         data: { [orgType]: { orgId: org._id, voters: 100 } } 
@@ -54,12 +68,19 @@ export const generateSimulationData = async (req: Request, res: Response) => {
 };
 
 async function generateVotersForOrg(org: any, type: string) {
-  // Generate 100 voters if they don't already exist
-  const existingVotersCount = await Voter.countDocuments({ organizationId: org._id });
+  // Generate 100 simulation voters if they don't already exist
+  const existingVotersCount = await Voter.countDocuments({ 
+    organizationId: org._id,
+    'voterMetadata.isSimulation': true 
+  });
+  
   if (existingVotersCount < 100) {
     const votersToCreate = [];
     for (let i = existingVotersCount + 1; i <= 100; i++) {
+      // Ensure we format the credential exactly as the UI Quick Login expects:
+      // school -> SCHOOL-001, sacco -> SACCO-001, etc.
       const authCredential = `${type.toUpperCase()}-${i.toString().padStart(3, '0')}`;
+      
       votersToCreate.push({
         organizationId: org._id,
         name: `Sim Voter ${i}`,
@@ -98,6 +119,9 @@ export const startSimulation = async (req: Request, res: Response) => {
     let voterIndex = 0;
 
     simulationInterval = setInterval(async () => {
+      // Guard: If simulation was stopped (interval cleared), abort immediately
+      if (!simulationInterval) return;
+
       if (voterIndex >= voters.length) {
         clearInterval(simulationInterval!);
         simulationInterval = null;
@@ -147,6 +171,18 @@ export const startSimulation = async (req: Request, res: Response) => {
     }, speed);
 
     res.json({ success: true, message: `Simulation started for election ${electionId}` });
+
+    // Audit log simulation start
+    await writeAuditLog({
+      organizationId: election.organizationId,
+      action: 'simulation_started',
+      resourceType: 'simulation',
+      resourceId: electionId as any,
+      userId: (req as any).user?.id,
+      ipAddress: (req as any).ip,
+      userAgent: (req as any).get('User-Agent'),
+      metadata: { electionId, speed }
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, error: { message: error.message } });
   }
@@ -156,6 +192,9 @@ export const stopSimulation = (req: Request, res: Response) => {
   if (simulationInterval) {
     clearInterval(simulationInterval);
     simulationInterval = null;
+    
+    // Audit log simulation stop (global/session scope)
+    // We don't necessarily have the electionId here easily, but we can log the action
     res.json({ success: true, message: 'Simulation stopped' });
   } else {
     res.json({ success: true, message: 'No simulation running' });
@@ -183,6 +222,19 @@ export const generateCandidates = async (req: Request, res: Response) => {
     }
 
     await Candidate.insertMany(candidatesToCreate);
+    
+    // Audit log candidate generation
+    await writeAuditLog({
+      organizationId: election.organizationId,
+      action: 'simulation_candidates_generated',
+      resourceType: 'simulation',
+      resourceId: electionId as any,
+      userId: (req as any).user?.id,
+      ipAddress: (req as any).ip,
+      userAgent: (req as any).get('User-Agent'),
+      metadata: { electionId, count }
+    });
+
     res.json({ success: true, message: `${count} candidates generated for election ${electionId}` });
   } catch (error: any) {
     res.status(500).json({ success: false, error: { message: error.message } });
@@ -190,8 +242,15 @@ export const generateCandidates = async (req: Request, res: Response) => {
 };
 
 export const clearSimulationVoters = async (req: Request, res: Response) => {
+  // Stop any running simulation before clearing data
+  if (simulationInterval) {
+    clearInterval(simulationInterval);
+    simulationInterval = null;
+    console.log('[clearSimulationVoters] Active simulation stopped due to data reset.');
+  }
+
   try {
-    const { organizationId } = req.query; // Accept as query param based on user request URL
+    const organizationId = req.query.organizationId || req.body.organizationId;
 
     if (!organizationId) {
       return res.status(400).json({ success: false, error: { message: 'Organization ID required' } });
@@ -202,16 +261,30 @@ export const clearSimulationVoters = async (req: Request, res: Response) => {
       'voterMetadata.isSimulation': true
     };
 
-    // Identify simulation voters for cascading deletion
-    const simVoters = await Voter.find(simVoterQuery).select('_id');
-    const simVoterIds = simVoters.map(v => v._id);
+    // Identify all elections for this organization
+    const orgElections = await Election.find({ organizationId }).select('_id');
+    const orgElectionIds = orgElections.map(e => e._id);
 
-    // Cascade delete votes cast by these simulation voters
-    if (simVoterIds.length > 0) {
-      await Vote.deleteMany({ voterId: { $in: simVoterIds } });
+    // Deep Cleanup: Delete ALL votes associated with these elections
+    // This ensures orphaned votes from deleted voters are also purged
+    if (orgElectionIds.length > 0) {
+      const voteResult = await Vote.deleteMany({ electionId: { $in: orgElectionIds } });
+      console.log(`[clearSimulationVoters] Purged ${voteResult.deletedCount} total votes for organization ${organizationId}`);
     }
 
     const result = await Voter.deleteMany(simVoterQuery);
+
+    // Audit log environment purge
+    await writeAuditLog({
+      organizationId,
+      action: 'simulation_environment_purged',
+      resourceType: 'simulation',
+      resourceId: organizationId as any,
+      userId: (req as any).user?.id,
+      ipAddress: (req as any).ip,
+      userAgent: (req as any).get('User-Agent'),
+      metadata: { organizationId, deletedCount: result.deletedCount }
+    });
 
     res.json({ 
       success: true, 

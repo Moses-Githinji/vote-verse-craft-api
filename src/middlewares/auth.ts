@@ -19,7 +19,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
 export const requireOrgAccess = (req: Request, res: Response, next: NextFunction) => {
   const user = (req as any).user;
   
-  if (!user || !user.organization) {
+  if (!user || (!user.organization && user.role !== 'super_admin')) {
      return res.status(403).json({ success: false, error: { message: 'Organization access denied' } });
   }
 
@@ -38,6 +38,14 @@ export const requireRole = (roles: string[]) => (req: Request, res: Response, ne
   const user = (req as any).user;
   if (!user || !roles.includes(user.role)) {
     return res.status(403).json({ success: false, error: { message: 'Insufficient permissions' } });
+  }
+  next();
+};
+
+export const isSuperAdmin = (req: Request, res: Response, next: NextFunction) => {
+  const user = (req as any).user;
+  if (!user || user.role !== 'super_admin') {
+    return res.status(403).json({ success: false, error: { message: 'Insufficient permissions: Super Admin only' } });
   }
   next();
 };

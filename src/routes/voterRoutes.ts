@@ -4,11 +4,14 @@ import {
   getVoters, 
   createVoter, 
   bulkCreateVoters,
-  deleteAllVoters
+  deleteAllVoters,
+  deleteVotersBulk,
+  deleteVoter
 } from '../controllers/voterController';
 import { authenticate, requireRole, requireOrgAccess } from '../middlewares/auth';
 import { loginLimiter } from '../middlewares/rateLimiter';
-import { uploadCSV } from '../middlewares/upload';
+import { uploadCSV, uploadImage } from '../middlewares/upload';
+import { checkResourceLimit } from '../middlewares/entitlementGuard';
 
 export const voterRouter = Router({ mergeParams: true });
 
@@ -23,6 +26,8 @@ voterRouter.use(requireOrgAccess);
 voterRouter.use(requireRole(['super_admin', 'admin']));
 
 voterRouter.get('/', getVoters);
-voterRouter.post('/', createVoter);
-voterRouter.post('/bulk', uploadCSV.single('csvFile'), bulkCreateVoters);
+voterRouter.post('/', uploadImage.single('photo'), checkResourceLimit('voters'), createVoter);
+voterRouter.post('/bulk', uploadCSV.single('csvFile'), checkResourceLimit('voters'), bulkCreateVoters);
 voterRouter.delete('/', deleteAllVoters);
+voterRouter.post('/delete-bulk', deleteVotersBulk);
+voterRouter.delete('/:id', deleteVoter);

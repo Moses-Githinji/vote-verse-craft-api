@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Request Received — KuraPap</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#E8EDF2; font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; -webkit-font-smoothing:antialiased; color:#0C1B36; }
+    .wrap { width:100%; background:#E8EDF2; padding:40px 16px; }
+    .box { max-width:600px; margin:0 auto; background:#ffffff; border:1px solid #D0D9E3; border-radius:4px; overflow:hidden; box-shadow:0 4px 24px rgba(12,27,54,0.08); }
+
+    /* HEADER */
+    .hdr { background:linear-gradient(135deg,#0C1B36 0%,#0F2A48 60%,#0C2235 100%); padding:0; position:relative; overflow:hidden; }
+    .hdr::before { content:''; position:absolute; inset:0; background-image:linear-gradient(rgba(39,201,181,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(39,201,181,0.07) 1px,transparent 1px); background-size:32px 32px; z-index:1; }
+    .hdr::after { content:''; position:absolute; top:-60px; right:-60px; width:280px; height:280px; background:radial-gradient(circle,rgba(26,158,143,0.3) 0%,transparent 70%); z-index:1; }
+    .hdr-in { padding:48px 40px 40px; position:relative; z-index:2; }
+
+    /* Wordmark */
+    .wm { display:inline-flex; align-items:center; gap:10px; margin-bottom:36px; }
+    .wm-ico { width:36px; height:36px; background:linear-gradient(135deg,#1A9E8F,#27C9B5); border-radius:6px; display:table-cell; vertical-align:middle; text-align:center; box-shadow:0 0 20px rgba(26,158,143,0.5); }
+    .wm-txt { font-size:16px; font-weight:800; color:#F6F8FA; letter-spacing:-0.02em; }
+    .wm-txt span { color:#27C9B5; }
+
+    .badge { display:inline-block; background:rgba(39,201,181,0.15); border:1px solid rgba(39,201,181,0.4); border-radius:2px; padding:4px 10px; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#27C9B5; margin-bottom:16px; }
+    .hdr h1 { font-size:26px; font-weight:800; color:#F6F8FA; line-height:1.2; letter-spacing:-0.03em; margin-bottom:12px; }
+    .hdr h1 em { font-style:normal; color:#27C9B5; }
+    .hdr p { font-size:14px; color:#8aa8c0; line-height:1.6; }
+
+    /* BODY */
+    .body { padding:40px; background:#ffffff; }
+    .greet { font-size:15px; color:#0C1B36; line-height:1.7; margin-bottom:32px; }
+    .greet strong { font-weight:700; }
+
+    /* Timeline */
+    .tl-title { font-size:10px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:#5A6A7E; margin-bottom:20px; }
+    .step { display:table; width:100%; margin-bottom:0; }
+    .step-row { display:table-row; }
+    .step-left { display:table-cell; width:44px; vertical-align:top; padding-top:2px; padding-bottom:20px; }
+    .step-right { display:table-cell; vertical-align:top; padding-bottom:20px; border-bottom:1px solid #E8EDF2; padding-left:0; }
+    .step:last-child .step-right { border-bottom:none; }
+    .step-num { width:32px; height:32px; border-radius:50%; font-size:12px; font-weight:700; line-height:32px; text-align:center; display:block; }
+    .step-num.active { background:linear-gradient(135deg,#1A9E8F,#27C9B5); color:#0C1B36; box-shadow:0 0 14px rgba(26,158,143,0.3); }
+    .step-num.pending { background:#F6F8FA; border:1px solid #D0D9E3; color:#5A6A7E; }
+    .step-label { font-size:13px; font-weight:700; color:#0C1B36; margin-bottom:4px; }
+    .step-label.muted { color:#5A6A7E; }
+    .step-desc { font-size:12px; color:#5A6A7E; line-height:1.5; }
+    .step-time { font-size:10px; color:#1A9E8F; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; margin-top:4px; }
+
+    /* Details card */
+    .card { background:#F6F8FA; border:1px solid #D0D9E3; border-radius:4px; overflow:hidden; margin-bottom:32px; }
+    .card-hdr { padding:12px 20px; border-bottom:1px solid #D0D9E3; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#1A9E8F; }
+    .det-row { display:table; width:100%; border-bottom:1px solid #D0D9E3; }
+    .det-row:last-child { border-bottom:none; }
+    .det-key { display:table-cell; padding:12px 20px; font-size:11px; color:#5A6A7E; text-transform:uppercase; letter-spacing:0.08em; font-weight:600; width:45%; }
+    .det-val { display:table-cell; padding:12px 20px; font-size:13px; font-weight:700; color:#0C1B36; text-align:right; }
+    .det-val.accent { color:#1A9E8F; }
+
+    /* CTA */
+    .cta { text-align:center; margin-bottom:32px; }
+    .cta-btn { display:inline-block; background:linear-gradient(135deg,#1A9E8F,#27C9B5); color:#ffffff !important; text-decoration:none; font-size:13px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; padding:14px 36px; border-radius:2px; box-shadow:0 4px 16px rgba(26,158,143,0.35); }
+    .cta p { font-size:11px; color:#5A6A7E; margin-top:10px; }
+
+    .div { height:1px; background:#E8EDF2; margin:28px 0; }
+    .note { font-size:12px; color:#5A6A7E; line-height:1.7; }
+    .note strong { color:#0C1B36; }
+
+    /* FOOTER */
+    .ftr { padding:24px 40px; background:#F6F8FA; border-top:1px solid #D0D9E3; text-align:center; }
+    .ftr-links { margin-bottom:14px; }
+    .ftr-links a { color:#5A6A7E; text-decoration:none; font-size:11px; margin:0 8px; }
+    .ftr-copy { font-size:11px; color:#5A6A7E; line-height:1.6; }
+    .ftr-tag { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:#D0D9E3; margin-top:10px; }
+
+    @media (max-width:600px) {
+      .hdr-in,.body { padding:32px 24px; }
+      .ftr { padding:24px; }
+      .hdr h1 { font-size:22px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="box">
+
+    <!-- HEADER (always dark — brand anchor) -->
+    <div class="hdr">
+      <div class="hdr-in">
+        <div class="wm">
+          <div class="wm-ico">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0C1B36" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle">
+              <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+            </svg>
+          </div>
+          <span class="wm-txt">Kura<span>Pap</span></span>
+        </div>
+
+        <!-- 3D Ballot box SVG -->
+        <div style="margin-bottom:28px">
+          <svg width="110" height="96" viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block">
+            <ellipse cx="60" cy="82" rx="36" ry="10" fill="rgba(26,158,143,0.15)"/>
+            <path d="M24 40 L60 20 L96 40 L96 72 L60 92 L24 72 Z" fill="#0D2240" stroke="#1a2d4a" stroke-width="1"/>
+            <path d="M24 40 L60 60 L60 92 L24 72 Z" fill="#071828" stroke="#1a2d4a" stroke-width="1"/>
+            <path d="M60 60 L96 40 L96 72 L60 92 Z" fill="#0A2035" stroke="#1a2d4a" stroke-width="1"/>
+            <path d="M24 40 L60 20 L96 40 L60 60 Z" fill="#0F2A48" stroke="#27C9B5" stroke-width="1.5"/>
+            <rect x="46" y="36" width="28" height="5" rx="2.5" fill="#1a2d4a" stroke="#27C9B5" stroke-width="1"/>
+            <rect x="51" y="22" width="18" height="24" rx="1" fill="#1A9E8F" transform="rotate(-8 60 34)" opacity="0.9"/>
+            <line x1="54" y1="28" x2="66" y2="28" stroke="#0C1B36" stroke-width="1.5" opacity="0.6"/>
+            <line x1="54" y1="32" x2="66" y2="32" stroke="#0C1B36" stroke-width="1.5" opacity="0.6"/>
+            <ellipse cx="60" cy="39" rx="12" ry="3" fill="rgba(39,201,181,0.18)"/>
+          </svg>
+        </div>
+
+        <div class="badge">Intake Received</div>
+        <h1>Your election request<br/>has been <em>received</em>.</h1>
+        <p>Our logistics engine is calibrating your resource allocation.<br/>Sit tight — this is handled.</p>
+      </div>
+    </div>
+
+    <!-- BODY (light) -->
+    <div class="body">
+      <p class="greet">
+        Hello <strong>{{ORGANIZATION_NAME}}</strong>,<br/><br/>
+        We've successfully captured your intent for a <strong>{{SERVICE_MODE}}</strong> election event.
+        Our technical team will review your requirements against live inventory and send your
+        custom quote within the next few hours.
+      </p>
+
+      <!-- Timeline -->
+      <div style="margin-bottom:32px">
+        <div class="tl-title">What happens next</div>
+
+        <div class="step">
+          <div class="step-row">
+            <div class="step-left"><span class="step-num active">✓</span></div>
+            <div class="step-right">
+              <div class="step-label">Intent Submitted</div>
+              <div class="step-desc">Your questionnaire data has been securely logged and queued for review.</div>
+              <div class="step-time">Just now</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-row">
+            <div class="step-left"><span class="step-num pending">2</span></div>
+            <div class="step-right">
+              <div class="step-label muted">Logistics Review</div>
+              <div class="step-desc">Our team checks booth and staff inventory for your requested date and location.</div>
+              <div class="step-time">Within 2 – 4 hours</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-row">
+            <div class="step-left"><span class="step-num pending">3</span></div>
+            <div class="step-right">
+              <div class="step-label muted">Custom Invoice</div>
+              <div class="step-desc">You'll receive a detailed quote with a full cost and resource breakdown.</div>
+              <div class="step-time">Same business day</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Details -->
+      <div class="card">
+        <div class="card-hdr">Submission Reference</div>
+        <div class="det-row"><span class="det-key">Booking ID</span><span class="det-val accent">#{{BOOKING_ID}}</span></div>
+        <div class="det-row"><span class="det-key">Location</span><span class="det-val">{{LOCATION}}</span></div>
+        <div class="det-row"><span class="det-key">Election Date</span><span class="det-val">{{START_DATE}}</span></div>
+        <div class="det-row"><span class="det-key">Estimated Quote</span><span class="det-val accent">KES {{QUOTED_PRICE}}</span></div>
+      </div>
+
+      <!-- CTA -->
+      <div class="cta">
+        <a href="{{STATUS_URL}}" class="cta-btn">Track Your Request</a>
+        <p>Or reply to this email — a human will respond.</p>
+      </div>
+
+      <div class="div"></div>
+      <p class="note">KuraPap guarantees a <strong>zero-dispute election experience</strong> backed by our Integrity Engine. Every resource is tracked in real time. Every vote is immutable.</p>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="ftr">
+      <div class="ftr-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Contact Support</a>
+        <a href="#">Unsubscribe</a>
+      </div>
+      <p class="ftr-copy">KuraPap DVaaS · Nairobi, Kenya<br/>You received this because you submitted an intent questionnaire on our platform.</p>
+      <p class="ftr-tag">Digital Voting as a Service · Zero-Dispute Guarantee</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

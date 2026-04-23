@@ -1,10 +1,27 @@
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
+import { logger } from '../utils/logger';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_CLOUD_API_KEY || '');
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'sk-placeholder' });
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || 'sk-ant-placeholder' });
+let openaiClient: OpenAI | null = null;
+let anthropicClient: Anthropic | null = null;
+
+const getOpenAI = () => {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'sk-placeholder' });
+  }
+  return openaiClient;
+};
+
+const getAnthropic = () => {
+  if (!anthropicClient) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    console.info(`[AIService] Initializing Anthropic with key starting with: ${apiKey?.substring(0, 10)}...`);
+    anthropicClient = new Anthropic({ apiKey: apiKey || 'sk-ant-placeholder' });
+  }
+  return anthropicClient;
+};
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system';
@@ -52,8 +69,6 @@ export class AIService {
 
   static async generate(options: AIProviderOptions): Promise<AIResponse> {
     const providers = [
-      { name: 'Gemini', fn: this.generateWithGemini.bind(this) },
-      { name: 'OpenAI', fn: this.generateWithOpenAI.bind(this) },
       { name: 'Claude', fn: this.generateWithClaude.bind(this) }
     ];
 
@@ -69,12 +84,21 @@ export class AIService {
       
       const res: any = {};
       for (const key in obj) {
-        if (key === 'type' && typeof obj[key] === 'string') {
-          res[key] = obj[key].toLowerCase();
+        if (key === 'type' && (typeof obj[key] === 'string' || typeof obj[key] === 'number')) {
+          const val = String(obj[key]).toLowerCase();
+          if (val === '6' || val === 'object') res[key] = 'object';
+          else if (val === '0' || val === 'string') res[key] = 'string';
+          else if (val === '1' || val === 'number') res[key] = 'number';
+          else if (val === '2' || val === 'integer') res[key] = 'integer';
+          else if (val === '3' || val === 'boolean') res[key] = 'boolean';
+          else if (val === '4' || val === 'array') res[key] = 'array';
+          else res[key] = val;
         } else {
+          // Recursively normalize everything else (properties, required, items, etc.)
           res[key] = normalizeSchema(obj[key]);
         }
       }
+      if (res.type === 'object' && !res.properties && !res.items) res.properties = {};
       return res;
     };
 
@@ -90,13 +114,23 @@ export class AIService {
 
     for (const provider of providers) {
       try {
-        console.log(`[AIService] Attempting generation with ${provider.name}...`);
-        const response = await provider.fn(providerOptions);
-        console.log(`[AIService] ${provider.name} success.`);
+        logger.info(`[AIService] Attempting generation with ${provider.name}...`);
+        
+        // Add a 20-second timeout for each provider
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error(`${provider.name} timeout after 20s`)), 20000)
+        );
+        
+        const response = await Promise.race([
+          provider.fn(providerOptions),
+          timeoutPromise
+        ]) as AIResponse;
+
+        logger.info(`[AIService] ${provider.name} success.`);
         return response;
       } catch (error: any) {
         const errorMsg = error.response?.data?.error?.message || error.message;
-        console.warn(`[AIService] ${provider.name} failed:`, errorMsg);
+        logger.warn(`[AIService] ${provider.name} failed: ${errorMsg}`);
         lastError = { provider: provider.name, message: errorMsg, details: error.response?.data };
       }
     }
@@ -160,7 +194,8 @@ export class AIService {
       throw new Error('OpenAI API Key not configured');
     }
 
-    const response = await openai.chat.completions.create({
+    const client = getOpenAI();
+    const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
         { role: "system", content: options.systemPrompt },
@@ -218,18 +253,27 @@ export class AIService {
       throw new Error('Anthropic API Key not configured');
     }
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+    const client = getAnthropic();
+    const claudeTools = options.tools?.map((t: any) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.parameters
+    }));
+
+    if (claudeTools) {
+      console.info("[AIService] Claude Tools JSON:");
+      console.info(JSON.stringify(claudeTools, null, 2));
+      logger.info(`[AIService] Claude Tools count: ${claudeTools.length}`);
+    }
+
+    const response = await client.messages.create({
+      model: "claude-3-haiku-20240307",
       max_tokens: 4000,
       system: options.systemPrompt,
       messages: options.history
         .filter(m => m.role !== 'system')
         .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-      tools: options.tools?.map((t: any) => ({
-        name: t.name,
-        description: t.description,
-        input_schema: t.parameters
-      }))
+      tools: claudeTools
     });
 
     const calls = response.content

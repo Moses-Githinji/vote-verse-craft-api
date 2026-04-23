@@ -6,6 +6,9 @@ import { User } from './models/User';
 import { Election } from './models/Election';
 import { Candidate } from './models/Candidate';
 import { Voter } from './models/Voter';
+import { Plan } from './models/Plan';
+import { Subscription } from './models/Subscription';
+import { PLAN_LIMITS } from './config/entitlements';
 
 dotenv.config();
 
@@ -16,12 +19,16 @@ const seedDatabase = async () => {
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to Database');
 
+    // Seed plans first (upsert — safe to re-run)
+    await seedPlans();
+
     // Clear existing data
     await Organization.deleteMany({});
     await User.deleteMany({});
     await Election.deleteMany({});
     await Candidate.deleteMany({});
     await Voter.deleteMany({});
+    await Subscription.deleteMany({});
 
     // ─── Organizations ───────────────────────────────────────────
     console.log('Inserting Organizations...');
@@ -295,6 +302,10 @@ const seedDatabase = async () => {
       { organizationId: new mongoose.Types.ObjectId("65f9a0b1c9e77c001f3b3a13"), name: "Fatuma Hassan Ali", authCredential: "WDP003", isActive: true, hasVoted: false },
     ]);
 
+    // ─── Default Subscriptions for seeded orgs ───────────────────
+    console.log('Creating default Starter subscriptions for seeded orgs...');
+    await seedDefaultSubscriptions();
+
     console.log('✅ Seeding completed successfully!');
     process.exit(0);
   } catch (error) {
@@ -304,3 +315,56 @@ const seedDatabase = async () => {
 };
 
 seedDatabase();
+
+// ─── Plan Seed Function ─────────────────────────────────────────────────────
+
+async function seedPlans() {
+  console.log('Upserting Plans...');
+  const planDefs = [
+    {
+      planId: 'starter',
+      name: 'Starter (Free)',
+      description: 'For small clubs and organizations just getting started with digital voting.',
+      features: PLAN_LIMITS.starter,
+    },
+    {
+      planId: 'pro',
+      name: 'Pro (Growth)',
+      description: 'For mid-sized organizations that need more elections and advanced analytics.',
+      features: PLAN_LIMITS.pro,
+    },
+    {
+      planId: 'enterprise',
+      name: 'Enterprise (Scale)',
+      description: 'For large organizations needing unlimited capacity, AI insights, and white-labeling.',
+      features: PLAN_LIMITS.enterprise,
+    },
+  ];
+
+  for (const p of planDefs) {
+    await Plan.findOneAndUpdate({ planId: p.planId }, p, { upsert: true, new: true });
+  }
+  console.log('✅ Plans seeded (3 plans).');
+}
+
+async function seedDefaultSubscriptions() {
+  const orgs = await Organization.find({}).select('_id');
+  const now = new Date();
+  const periodEnd = new Date(now);
+  periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+
+  for (const org of orgs) {
+    await Subscription.findOneAndUpdate(
+      { organizationId: org._id },
+      {
+        organizationId: org._id,
+        planId: 'starter',
+        status: 'active',
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+      },
+      { upsert: true, new: true }
+    );
+  }
+  console.log(`✅ Default starter subscriptions created for ${orgs.length} orgs.`);
+}

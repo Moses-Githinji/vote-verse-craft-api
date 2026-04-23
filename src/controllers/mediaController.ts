@@ -30,7 +30,7 @@ export const searchImages = async (req: Request, res: Response) => {
       });
     }
 
-    const data = await response.json();
+    const data = await response.json() as any;
     
     // Map the results to just the URLs we need for the frontend
     const items = data.items || [];

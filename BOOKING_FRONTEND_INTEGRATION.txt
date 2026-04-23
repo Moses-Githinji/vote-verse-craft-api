@@ -1,0 +1,64 @@
+# Route: GET /api/v1/booking/availability
+# Relationship: This is the data source for your "Grayed Out" calendar.
+# Query Params: 
+#   - planId (starter|standard|premium): Determines required resources (booths/staff).
+#   - months (number): How far ahead to check (default 3).
+
+### Frontend Implementation Checklist:
+
+1. **Plan Selection:**
+   When the user selects a package (e.g., Standard), trigger a fetch to:
+   `GET /api/v1/booking/availability?planId=standard`
+
+2. **Parsing the Response:**
+   The backend returns an array of ISO date strings (Y-M-D):
+   ```json
+   {
+     "success": true,
+     "data": {
+       "planId": "standard",
+       "blockedDates": ["2026-05-09", "2026-05-10", "2026-05-11"]
+     }
+   }
+   ```
+   Convert these strings to JavaScript Date objects for your calendar library.
+
+3. **Calendar Integration (React Example):**
+   If using `react-datepicker`, use the `excludeDates` prop:
+
+   ```jsx
+   const [blockedDates, setBlockedDates] = useState([]);
+
+   useEffect(() => {
+     fetchAvailability(selectedPlan).then(dates => {
+       const mapped = dates.map(d => new Date(d));
+       setBlockedDates(mapped);
+     });
+   }, [selectedPlan]);
+
+   return (
+     <DatePicker
+       selected={startDate}
+       onChange={date => setStartDate(date)}
+       excludeDates={blockedDates}
+       placeholderText="Select a date"
+       minDate={new Date()}
+     />
+   );
+   ```
+
+4. **Self-Service Buffer Logic:**
+   The backend automatically calculates buffer days (1 day before/after). 
+   - If User picks May 10, the backend checks May 9 and May 11 too.
+   - If ANY of those 3 days are full, May 10 will appear in `blockedDates`.
+   Result: The user only sees what is actually possible to book.
+
+5. **Clustering Prevention UX:**
+   If a date is blocked, show a helpful message:
+   *"This date is fully booked for the Standard tier. Please select another date or try the Starter tier if your event is smaller."*
+
+---
+### Related Backend Files:
+- Logic: `src/services/AvailabilityService.ts`
+- Controller: `src/controllers/bookingController.ts`
+- Route: `src/routes/bookingRoutes.ts`

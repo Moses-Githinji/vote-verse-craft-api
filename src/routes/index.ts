@@ -11,11 +11,15 @@ import { candidateRouter } from './candidateRoutes';
 import { mediaRouter } from './mediaRoutes';
 import { aiRouter } from './aiRoutes';
 import simulationRouter from './simulationRoutes';
+import { subscriptionRouter } from './subscriptionRoutes';
+import bookingRouter from './bookingRoutes';
 
 export const apiRouter = Router();
 
 // Routes
 apiRouter.use('/auth', authRouter);
+apiRouter.use('/subscription', subscriptionRouter);
+apiRouter.use('/booking', bookingRouter);
 apiRouter.use('/simulate', simulationRouter);
 apiRouter.use('/:orgType/simulate', simulationRouter);
 apiRouter.use('/organizations', orgRouter); // Changed to orgRouter to match import, assuming instruction had a typo with organizationRouter
@@ -24,6 +28,7 @@ apiRouter.use('/media', mediaRouter);
 // Organization specific routes - org type support added
 apiRouter.use('/:orgType/voters', voterRouter);
 apiRouter.use('/:orgType/elections', electionRouter);
+apiRouter.use('/:orgType/candidates', candidateRouter);
 apiRouter.use('/:orgType/elections/:electionId/candidates', candidateRouter);
 apiRouter.use('/:orgType/dashboard', dashboardRouter);
 apiRouter.use('/:orgType/elections/:id/results', resultsRouter);
