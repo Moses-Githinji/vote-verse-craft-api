@@ -216,6 +216,40 @@ export const submitIntent = async (req: Request, res: Response) => {
       org.name = organizationName;
       if (phone) org.phone = phone;
       await org.save();
+
+      // --- DUPLICATE PREVENTION CHECK ---
+      // Check if this organization already has an existing intent (Booking)
+      const existingBooking = await Booking.findOne({ organizationId: org._id }).sort({ createdAt: -1 });
+      
+      if (existingBooking) {
+        console.log(`[INTENT] Duplicate detected for ${email}. Quoting original intent ${existingBooking._id}`);
+        
+        // Trigger Duplicate Notification Email
+        await EmailService.sendOnboardingEmail(
+          'duplicate_intent',
+          org._id.toString(),
+          {
+            bookingId:    existingBooking._id.toString(),
+            location:     existingBooking.location,
+            quotedPrice:  existingBooking.quotedPrice,
+            startDate:    existingBooking.startDate.toISOString(),
+            voterCount:   existingBooking.voterCount || 0,
+            boothsCount:  existingBooking.boothsRequested,
+            staffCount:   existingBooking.staffRequested,
+            planName:     existingBooking.planId.charAt(0).toUpperCase() + existingBooking.planId.slice(1),
+            serviceMode:  existingBooking.serviceMode
+          }
+        ).catch(err => console.error('Duplicate email trigger failed:', err));
+
+        return res.status(200).json({
+          success: true,
+          message: 'An intent has already been submitted for this email. We have sent a reminder with the original details to your inbox.',
+          data: {
+            duplicate: true,
+            bookingId: existingBooking._id
+          }
+        });
+      }
     }
 
     // 2. Throughput & Price Logic

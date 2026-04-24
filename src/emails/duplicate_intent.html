@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Intent Already Submitted — KuraPap</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#E8EDF2; font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; -webkit-font-smoothing:antialiased; color:#0C1B36; }
+    .wrap { width:100%; background:#E8EDF2; padding:40px 16px; }
+    .box { max-width:600px; margin:0 auto; background:#ffffff; border:1px solid #D0D9E3; border-radius:4px; overflow:hidden; box-shadow:0 4px 24px rgba(12,27,54,0.08); }
+
+    /* HEADER */
+    .hdr { background:linear-gradient(135deg,#0C1B36 0%,#0F2A48 60%,#0C2235 100%); padding:0; position:relative; overflow:hidden; }
+    .hdr-in { padding:48px 40px 40px; position:relative; z-index:2; }
+
+    /* Wordmark */
+    .wm { display:inline-flex; align-items:center; gap:10px; margin-bottom:36px; }
+    .wm-ico { width:36px; height:36px; background:linear-gradient(135deg,#1A9E8F,#27C9B5); border-radius:6px; display:table-cell; vertical-align:middle; text-align:center; box-shadow:0 0 20px rgba(26,158,143,0.5); }
+    .wm-txt { font-size:16px; font-weight:800; color:#F6F8FA; letter-spacing:-0.02em; }
+    .wm-txt span { color:#27C9B5; }
+
+    .badge { display:inline-block; background:rgba(255,165,0,0.15); border:1px solid rgba(255,165,0,0.4); border-radius:2px; padding:4px 10px; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#FFA500; margin-bottom:16px; }
+    .hdr h1 { font-size:26px; font-weight:800; color:#F6F8FA; line-height:1.2; letter-spacing:-0.03em; margin-bottom:12px; }
+    .hdr h1 em { font-style:normal; color:#27C9B5; }
+    .hdr p { font-size:14px; color:#8aa8c0; line-height:1.6; }
+
+    /* BODY */
+    .body { padding:40px; background:#ffffff; }
+    .greet { font-size:15px; color:#0C1B36; line-height:1.7; margin-bottom:32px; }
+    .greet strong { font-weight:700; }
+
+    /* Details card */
+    .card { background:#F6F8FA; border:1px solid #D0D9E3; border-radius:4px; overflow:hidden; margin-bottom:32px; }
+    .card-hdr { padding:12px 20px; border-bottom:1px solid #D0D9E3; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#1A9E8F; }
+    .det-row { display:table; width:100%; border-bottom:1px solid #D0D9E3; }
+    .det-row:last-child { border-bottom:none; }
+    .det-key { display:table-cell; padding:12px 20px; font-size:11px; color:#5A6A7E; text-transform:uppercase; letter-spacing:0.08em; font-weight:600; width:45%; }
+    .det-val { display:table-cell; padding:12px 20px; font-size:13px; font-weight:700; color:#0C1B36; text-align:right; }
+    .det-val.accent { color:#1A9E8F; }
+
+    /* CTA */
+    .cta { text-align:center; margin-bottom:32px; }
+    .cta-btn { display:inline-block; background:linear-gradient(135deg,#1A9E8F,#27C9B5); color:#ffffff !important; text-decoration:none; font-size:13px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; padding:14px 36px; border-radius:2px; box-shadow:0 4px 16px rgba(26,158,143,0.35); }
+    .cta p { font-size:11px; color:#5A6A7E; margin-top:10px; }
+
+    .div { height:1px; background:#E8EDF2; margin:28px 0; }
+    .note { font-size:12px; color:#5A6A7E; line-height:1.7; }
+    
+    /* FOOTER */
+    .ftr { padding:24px 40px; background:#F6F8FA; border-top:1px solid #D0D9E3; text-align:center; }
+    .ftr-links { margin-bottom:14px; }
+    .ftr-links a { color:#5A6A7E; text-decoration:none; font-size:11px; margin:0 8px; }
+    .ftr-copy { font-size:11px; color:#5A6A7E; line-height:1.6; }
+
+    @media (max-width:600px) {
+      .hdr-in,.body { padding:32px 24px; }
+      .ftr { padding:24px; }
+      .hdr h1 { font-size:22px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="box">
+
+    <div class="hdr">
+      <div class="hdr-in">
+        <div class="wm">
+          <div class="wm-ico">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0C1B36" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle">
+              <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+            </svg>
+          </div>
+          <span class="wm-txt">Kura<span>Pap</span></span>
+        </div>
+
+        <div class="badge">Duplicate Request Detected</div>
+        <h1>An intent already exists for this <em>institution</em>.</h1>
+        <p>It looks like a questionnaire was previously submitted using this email.<br/>To ensure consistency, we are quoting your original submission below.</p>
+      </div>
+    </div>
+
+    <div class="body">
+      <p class="greet">
+        Hello <strong>{{ORGANIZATION_NAME}}</strong>,<br/><br/>
+        We noticed that you've submitted a new election intent request. However, our records show that you already have an active onboarding intent in our system.
+      </p>
+
+      <div class="card">
+        <div class="card-hdr">Original Submission Details</div>
+        <div class="det-row"><span class="det-key">Booking ID</span><span class="det-val accent">#{{BOOKING_ID}}</span></div>
+        <div class="det-row"><span class="det-key">Original Location</span><span class="det-val">{{LOCATION}}</span></div>
+        <div class="det-row"><span class="det-key">Election Date</span><span class="det-val">{{START_DATE}}</span></div>
+        <div class="det-row"><span class="det-key">Original Quote</span><span class="det-val accent">KES {{QUOTED_PRICE}}</span></div>
+        <div class="det-row"><span class="det-key">Plan Selected</span><span class="det-val">{{PLAN_NAME}}</span></div>
+      </div>
+
+      <div class="cta">
+        <a href="{{STATUS_URL}}" class="cta-btn">View Original Request Status</a>
+        <p>If you believe this is an error or need to update your details, please reply to this email.</p>
+      </div>
+
+      <div class="div"></div>
+      <p class="note">To maintain the integrity of our logistics planning, we only process one primary intent per institution per cycle. If you wish to create a separate election event, please contact our support team directly.</p>
+    </div>
+
+    <div class="ftr">
+      <div class="ftr-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Contact Support</a>
+      </div>
+      <p class="ftr-copy">KuraPap DVaaS · Nairobi, Kenya</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

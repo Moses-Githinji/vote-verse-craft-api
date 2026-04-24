@@ -54,7 +54,7 @@ function htmlToText(html: string): string {
 // ─────────────────────────────────────────────────────────────────────────────
 // Email type definitions
 // ─────────────────────────────────────────────────────────────────────────────
-type EmailType = 'submission_received' | 'processing_started' | 'invoice_ready';
+type EmailType = 'submission_received' | 'processing_started' | 'invoice_ready' | 'duplicate_intent';
 
 interface EmailData {
   bookingId?: string;
@@ -80,6 +80,7 @@ const SUBJECTS: Record<EmailType, string> = {
   submission_received: "We've received your election request — KuraPap",
   processing_started:  "Your booking is under review — KuraPap",
   invoice_ready:       "Your custom election invoice is ready — KuraPap",
+  duplicate_intent:    "Intent Already Submitted — KuraPap",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
