@@ -211,6 +211,11 @@ export const submitIntent = async (req: Request, res: Response) => {
         password: 'provisional_placeholder',
         isActive: false
       });
+    } else {
+      // Ensure existing provisional (or even active) org reflects the latest captured name/phone from the intent
+      org.name = organizationName;
+      if (phone) org.phone = phone;
+      await org.save();
     }
 
     // 2. Throughput & Price Logic

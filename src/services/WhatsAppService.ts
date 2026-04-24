@@ -3,6 +3,18 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+/**
+ * Mapping of Template Names to their Approved Body Patterns.
+ * In production, you would ensure these match your Twilio/Meta dashboard exactly.
+ */
+const TEMPLATE_MAP: Record<string, string> = {
+  'intent_submission_confirmation': "Hi {{1}}, we've received your election intent! We are calculating booth availability now.",
+  'booking_confirmation': "Your booking {{1}} has been confirmed for {{2}}. We are starting calibration.",
+  'invoice_issued': "Your invoice for {{1}} is ready. View it here: {{2}}",
+  'payment_received': "Payment received for {{1}}. Your results/services are now unlocked!",
+  'election_reminder': "Reminder: The {{1}} election is starting in 2 days ({{2}}). Prepare your voters!",
+};
+
 export class WhatsAppService {
   private static readonly ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
   private static readonly AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -13,11 +25,19 @@ export class WhatsAppService {
     : null;
 
   /**
-   * Generic method to send a WhatsApp message
-   * In Twilio, 'to' must be prefixed with 'whatsapp:' if not already
+   * Generic method to send a free-form WhatsApp message
    */
   static async sendMessage(to: string, body: string): Promise<any> {
-    const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+    // 1. Normalize recipient number
+    let normalizedTo = to.trim();
+    if (normalizedTo.startsWith('0')) {
+      normalizedTo = '+254' + normalizedTo.substring(1);
+    }
+    const formattedTo = normalizedTo.startsWith('whatsapp:') ? normalizedTo : `whatsapp:${normalizedTo}`;
+
+    // 2. Normalize sender number (from .env)
+    const rawFrom = this.FROM_NUMBER;
+    const formattedFrom = rawFrom.startsWith('whatsapp:') ? rawFrom : `whatsapp:${rawFrom}`;
 
     if (!this.client) {
       console.warn('Twilio credentials missing. Skipping message.');
@@ -27,7 +47,7 @@ export class WhatsAppService {
     try {
       const message = await this.client.messages.create({
         body: body,
-        from: this.FROM_NUMBER,
+        from: formattedFrom,
         to: formattedTo
       });
       return message;
@@ -38,47 +58,31 @@ export class WhatsAppService {
   }
 
   /**
-   * Send a WhatsApp template message
-   * For Twilio, templates are often sent by just sending the body that matches the pre-approved template.
-   * We keep the signature the same as requested, but map it to Twilio's messaging.
+   * Sends a Template-based message.
+   * Dynamically replaces {{1}}, {{2}}, etc. based on the components provided.
    */
   static async sendTemplate(to: string, templateName: string, languageCode: string = 'en_US', components: any[] = []): Promise<any> {
-    // For Twilio Sandbox/Production, we usually send the body directly.
-    // If you are using the Twilio Content API, you would use contentSid instead.
-    // Here we will construct a body from components to mimic the cloud API behavior for the "Keep templates" requirement.
-    
-    let body = "";
-    const bodyComponent = components.find(c => c.type === 'body');
-    
-    // Simple placeholder replacement for common VoteVerse templates
-    // In a real production environment with Twilio Content API, you would pass contentSid and contentVariables.
-    if (templateName === 'intent_submission_confirmation') {
-      const orgName = bodyComponent?.parameters[0]?.text || 'Client';
-      body = `Hi ${orgName}, we've received your election intent! We are calculating booth availability now.`;
-    } else if (templateName === 'booking_confirmation') {
-      const bookingId = bodyComponent?.parameters[0]?.text || 'ID';
-      const date = bodyComponent?.parameters[1]?.text || 'Date';
-      body = `Your booking ${bookingId} has been confirmed for ${date}. We are starting calibration.`;
-    } else if (templateName === 'invoice_issued') {
-      const amount = bodyComponent?.parameters[0]?.text || '0.00';
-      const link = bodyComponent?.parameters[1]?.text || '';
-      body = `Your invoice for ${amount} is ready. View it here: ${link}`;
-    } else if (templateName === 'payment_received') {
-      const invoiceId = bodyComponent?.parameters[0]?.text || 'ID';
-      body = `Payment received for ${invoiceId}. Your results/services are now unlocked!`;
-    } else if (templateName === 'election_reminder') {
-      const title = bodyComponent?.parameters[0]?.text || 'Election';
-      const date = bodyComponent?.parameters[1]?.text || 'Date';
-      body = `Reminder: The ${title} election is starting in 2 days (${date}). Prepare your voters!`;
-    } else {
-      // Fallback
-      body = `Template ${templateName} triggered.`;
+    const pattern = TEMPLATE_MAP[templateName];
+    if (!pattern) {
+      console.error(`Template ${templateName} not found in TEMPLATE_MAP.`);
+      return this.sendMessage(to, `[Error] Template ${templateName} not found.`);
     }
 
-    return this.sendMessage(to, body);
+    // Extract body parameters
+    const bodyComponent = components.find(c => c.type === 'body');
+    const parameters = bodyComponent?.parameters || [];
+
+    // Replace placeholders {{1}}, {{2}}, etc. dynamically
+    let finalizedBody = pattern;
+    parameters.forEach((param: any, index: number) => {
+      const placeholder = `{{${index + 1}}}`;
+      finalizedBody = finalizedBody.replace(placeholder, param.text || '');
+    });
+
+    return this.sendMessage(to, finalizedBody);
   }
 
-  // Helper methods for specific business events (signatures stay identical)
+  // --- Convenience Helper Methods (保持签名一致) ---
   
   static async sendIntentConfirmation(to: string, orgName: string) {
     return this.sendTemplate(to, 'intent_submission_confirmation', 'en_US', [

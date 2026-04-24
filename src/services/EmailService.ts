@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
+import juice from 'juice';
 import { Organization } from '../models/Organization';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,7 +36,8 @@ function loadTemplate(templateName: string, variables: Record<string, string | n
     html = html.replace(regex, String(value ?? '—'));
   }
 
-  return html;
+  // Inline CSS styles for maximum email client compatibility
+  return juice(html);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -107,9 +109,9 @@ export class EmailService {
     const recipientName  = org.name || 'Valued Client';
 
     // 2. Build the base URL for links
-    const baseUrl  = process.env.CLIENT_STATUS_BASE_URL || 'https://kurapap.co.ke/status';
-    const statusUrl  = data.statusUrl  || `${baseUrl}/${data.bookingId}`;
-    const paymentUrl = data.paymentUrl || `${baseUrl}/${data.bookingId}/pay`;
+    const baseUrl  = process.env.CLIENT_STATUS_BASE_URL || 'https://shulepal-connect.vercel.app';
+    const statusUrl  = data.statusUrl  || `${baseUrl}/status/${data.bookingId}`;
+    const paymentUrl = data.paymentUrl || `${baseUrl}/status/${data.bookingId}/pay`;
 
     // 3. Format values
     const formattedPrice   = data.quotedPrice  ? data.quotedPrice.toLocaleString('en-KE')  : '—';
