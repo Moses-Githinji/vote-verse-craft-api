@@ -13,6 +13,7 @@ import { aiRouter } from './aiRoutes';
 import simulationRouter from './simulationRoutes';
 import { subscriptionRouter } from './subscriptionRoutes';
 import bookingRouter from './bookingRoutes';
+import { whatsappRouter } from './whatsappRoutes';
 
 export const apiRouter = Router();
 
@@ -20,6 +21,7 @@ export const apiRouter = Router();
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/subscription', subscriptionRouter);
 apiRouter.use('/booking', bookingRouter);
+apiRouter.use('/whatsapp', whatsappRouter);
 apiRouter.use('/simulate', simulationRouter);
 apiRouter.use('/:orgType/simulate', simulationRouter);
 apiRouter.use('/organizations', orgRouter); // Changed to orgRouter to match import, assuming instruction had a typo with organizationRouter

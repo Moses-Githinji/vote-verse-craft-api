@@ -6,6 +6,8 @@ import { Voter } from '../models/Voter';
 import { Election } from '../models/Election';
 import { writeAuditLog } from '../utils/audit';
 import mongoose from 'mongoose';
+import { WhatsAppService } from '../services/WhatsAppService';
+import { Organization } from '../models/Organization';
 
 // --- Helpers ---
 
@@ -128,6 +130,13 @@ export const changePlan = async (req: Request, res: Response) => {
       { new: true, upsert: true }
     );
 
+    // --- WhatsApp Notification for Plan Change ---
+    const org = await Organization.findById(orgId);
+    if (org?.phone) {
+      await WhatsAppService.sendPaymentSuccess(org.phone, `PLAN_${planId.toUpperCase()}`)
+        .catch(err => console.error('WhatsApp plan change notification failed:', err));
+    }
+
     res.json({
       success: true,
       data: {
@@ -248,6 +257,21 @@ export const setSubscriptionStatus = async (req: Request, res: Response) => {
       update,
       { new: true, upsert: true }
     );
+
+    // --- WhatsApp Notifications for Status Changes ---
+    const org = await Organization.findById(orgId);
+    if (org?.phone) {
+      if (status === 'past_due') {
+        await WhatsAppService.sendInvoicingNotification(
+          org.phone, 
+          'Managed Subscription', 
+          'https://kurapap-admin.vercel.app/billing'
+        ).catch(err => console.error('WhatsApp past_due notification failed:', err));
+      } else if (status === 'active' && oldSub?.status === 'past_due') {
+        await WhatsAppService.sendPaymentSuccess(org.phone, sub._id.toString())
+          .catch(err => console.error('WhatsApp payment success notification failed:', err));
+      }
+    }
 
     // --- Audit Log ---
     await writeAuditLog({

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AvailabilityService } from '../services/AvailabilityService';
 import { Booking } from '../models/Booking';
 import { Organization } from '../models/Organization';
+import { WhatsAppService } from '../services/WhatsAppService';
 import { writeAuditLog } from '../utils/audit';
 
 const PLAN_REQUIREMENTS: Record<string, { booths: number; staff: number }> = {
@@ -145,6 +146,13 @@ export const createBooking = async (req: Request, res: Response) => {
       planName: planId.charAt(0).toUpperCase() + planId.slice(1),
       serviceMode
     });
+    
+    // 4.1 Trigger WhatsApp Intent Confirmation
+    const org = await Organization.findById(orgId);
+    if (org?.phone) {
+      await WhatsAppService.sendIntentConfirmation(org.phone, org.name)
+        .catch(err => console.error('WhatsApp trigger failed:', err));
+    }
 
     // 5. Log it
     await writeAuditLog({
@@ -278,6 +286,12 @@ export const submitIntent = async (req: Request, res: Response) => {
       }
     ).catch(err => console.error('Email trigger failed:', err));
 
+    // 4.1 Trigger WhatsApp Intent Confirmation
+    if (phone) {
+      await WhatsAppService.sendIntentConfirmation(phone, organizationName)
+        .catch(err => console.error('WhatsApp trigger failed:', err));
+    }
+
     res.status(201).json({
       success: true,
       message: 'Intent submitted successfully. Calibration started.',
@@ -308,6 +322,16 @@ export const verifyBooking = async (req: Request, res: Response) => {
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    // --- WhatsApp Notification on Confirmation ---
+    const org = await Organization.findById(booking.organizationId);
+    if (status === 'confirmed' && org?.phone) {
+      await WhatsAppService.sendBookingConfirmation(
+        org.phone, 
+        booking._id.toString(), 
+        booking.startDate.toISOString().split('T')[0]
+      ).catch(err => console.error('WhatsApp confirmation failed:', err));
     }
 
     // --- Audit Log ---
