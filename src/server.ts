@@ -12,7 +12,7 @@ const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {
   cors: {
-    origin: ['http://localhost:8080', 'http://localhost:8081', 'http://localhost:3000', 'https://kurapap-admin.vercel.app'],
+    origin: ['http://localhost:8080', 'http://localhost:8081', 'http://localhost:3000', 'https://kurapap-admin.vercel.app', 'https://shulepal-connect.vercel.app'],
     methods: ['GET', 'POST'],
     credentials: true
   }

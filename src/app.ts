@@ -25,7 +25,8 @@ const corsOptions = {
       'http://localhost:8081',
       'http://localhost:8080',
       'http://localhost:3000',
-      'https://kurapap-admin.vercel.app'
+      'https://kurapap-admin.vercel.app',
+      'https://shulepal-connect.vercel.app'
     ];
     
     if (allowedOrigins.indexOf(origin) !== -1) {
