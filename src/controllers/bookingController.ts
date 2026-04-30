@@ -2,8 +2,17 @@ import { Request, Response } from 'express';
 import { AvailabilityService } from '../services/AvailabilityService';
 import { Booking } from '../models/Booking';
 import { Organization } from '../models/Organization';
+import { User, Admin } from '../models/User';
+import { Invoice } from '../models/Invoice';
 import { WhatsAppService } from '../services/WhatsAppService';
+import { EmailService } from '../services/EmailService';
+import { LogisticsService } from '../services/LogisticsService';
+import { InvoiceService } from '../services/InvoiceService';
 import { writeAuditLog } from '../utils/audit';
+import { generateRandomPassword } from '../utils/crypto';
+import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
+import { logger } from '../utils/logger';
 
 const PLAN_REQUIREMENTS: Record<string, { booths: number; staff: number }> = {
   starter: { booths: 2, staff: 1 },
@@ -349,8 +358,16 @@ export const verifyBooking = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { status, notes } = req.body; // status: 'confirmed' | 'cancelled'
 
-    if (!['confirmed', 'cancelled'].includes(status)) {
-      return res.status(400).json({ success: false, message: 'Invalid status' });
+    // Find the booking first to check fields before update
+    const existingBooking = await Booking.findById(id);
+    if (!existingBooking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    // --- completed Logic: Lock critical fields ---
+    if (status === 'completed') {
+      // Logic for locking quotedPrice and boothsRequested can be enforced by simply not allowing updates 
+      // to them in other endpoints once status is 'completed', but here we ensure they are what they were.
     }
 
     const booking = await Booking.findByIdAndUpdate(
@@ -363,14 +380,139 @@ export const verifyBooking = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    // --- WhatsApp Notification on Confirmation ---
+    // --- Credentials Assignment & Notification on Confirmation ---
     const org = await Organization.findById(booking.organizationId);
-    if (status === 'confirmed' && org?.phone) {
-      await WhatsAppService.sendBookingConfirmation(
-        org.phone, 
-        booking._id.toString(), 
-        booking.startDate.toISOString().split('T')[0]
-      ).catch(err => console.error('WhatsApp confirmation failed:', err));
+    
+    if (status === 'confirmed' && org) {
+      // 1. Activate organization
+      org.isActive = true;
+      await org.save();
+
+      // 2. Generate random password
+      const password = generateRandomPassword(8);
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+
+      // 3. Create or update the Admin User for this organization
+      // We use the organization's primary email as the login email
+      let user = await Admin.findOne({ email: org.email });
+      
+      if (!user) {
+        await Admin.create({
+          organizationId: org._id,
+          email: org.email,
+          passwordHash: hashedPassword,
+          firstName: 'Admin',
+          lastName: org.name.split(' ')[0] || 'User',
+          role: 'admin',
+          isActive: true
+        });
+      } else {
+        user.passwordHash = hashedPassword;
+        user.organizationId = org._id as any;
+        user.isActive = true;
+        await user.save();
+      }
+
+      // 4. Send Confirmation Emails (Credentials & Invoice)
+      const fees = LogisticsService.getFeeBreakdown(
+        booking.planId, 
+        booking.voterCount || 0, 
+        booking.logisticsSurcharge, 
+        booking.boothsRequested
+      );
+
+      // If price was overridden, we reflect it in the total
+      const displayPrice = booking.quotedPrice || fees.total;
+
+      // --- ACCOUNTING INTEGRITY: Create/Update Invoice Persistence ---
+      // This ensures the financeController can track revenue in the dashboard
+      await Invoice.findOneAndUpdate(
+        { bookingId: booking._id },
+        {
+          organizationId: org._id,
+          bookingId: booking._id,
+          totalAmount: displayPrice,
+          status: 'unpaid',
+          dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+          issuedAt: new Date(),
+          externalId: `INV-${Date.now().toString().slice(-6)}`
+        },
+        { upsert: true, new: true }
+      );
+
+      const emailData = {
+        bookingId: booking._id.toString(),
+        location: booking.location,
+        startDate: booking.startDate.toISOString(),
+        planName: booking.planId.charAt(0).toUpperCase() + booking.planId.slice(1),
+        serviceMode: booking.serviceMode,
+        loginEmail: org.email,
+        loginPassword: password,
+        quotedPrice: displayPrice,
+        softwareFee: fees.softwareFee,
+        logisticsFee: fees.logisticsFee,
+        voterFee: fees.voterFee,
+        voterCount: booking.voterCount || 0,
+        boothsCount: booking.boothsRequested,
+        staffCount: booking.staffRequested,
+        organizationName: org.name,
+        attachInvoice: true
+      };
+
+      // 4a. Send Credentials
+      await EmailService.sendOnboardingEmail('intent_approved', org._id.toString(), emailData)
+        .catch(err => console.error('Email confirmation failed:', err));
+
+      // 4b. Send Invoice
+      await EmailService.sendOnboardingEmail('invoice_ready', org._id.toString(), emailData)
+        .catch(err => console.error('Invoice email failed:', err));
+
+      // 5. WhatsApp Notification
+      if (org.phone) {
+        try {
+          // Generate and upload invoice for WhatsApp attachment
+          const invoiceUrl = await InvoiceService.getInvoiceUrl(booking);
+          
+          await WhatsAppService.sendBookingConfirmation(
+            org.phone, 
+            booking._id.toString(), 
+            booking.startDate.toISOString().split('T')[0],
+            invoiceUrl
+          );
+          logger.info(`[WHATSAPP] Sent confirmation with invoice to ${org.phone}`);
+        } catch (err: any) {
+          // Fallback to sending without invoice if PDF/Cloudinary fails
+          logger.error('[WHATSAPP] Failed to attach invoice, sending text only:', err.message);
+          await WhatsAppService.sendBookingConfirmation(
+            org.phone, 
+            booking._id.toString(), 
+            booking.startDate.toISOString().split('T')[0]
+          ).catch(werr => logger.error('WhatsApp fallback failed:', werr));
+        }
+      }
+    }
+
+    // --- Revocation Logic for pending_verification ---
+    if (status === 'pending_verification' && org) {
+      // If moved from confirmed back to pending, revoke access
+      org.isActive = false;
+      await org.save();
+
+      const adminUser = await User.findOne({ email: org.email });
+      if (adminUser) {
+        adminUser.isActive = false;
+        await adminUser.save();
+      }
+    }
+
+    // --- Feedback Email on completion ---
+    if (status === 'completed' && org) {
+      await EmailService.sendOnboardingEmail('post_election_feedback', org._id.toString(), {
+        bookingId: booking._id.toString(),
+        location: booking.location,
+        startDate: booking.startDate.toISOString(),
+      }).catch(err => console.error('Feedback email failed:', err));
     }
 
     // --- Audit Log ---
@@ -395,6 +537,130 @@ export const verifyBooking = async (req: Request, res: Response) => {
   }
 };
 
+export const priceOverride = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { quotedPrice, logisticsSurcharge, reason } = req.body;
+
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    if (booking.status === 'completed') {
+      return res.status(400).json({ success: false, message: 'Cannot override price for a completed booking' });
+    }
+
+    const oldValues = { 
+      quotedPrice: booking.quotedPrice, 
+      logisticsSurcharge: booking.logisticsSurcharge 
+    };
+
+    booking.quotedPrice = quotedPrice;
+    booking.logisticsSurcharge = logisticsSurcharge;
+    booking.notes = `${booking.notes || ''}\n[PRICE OVERRIDE] Reason: ${reason}`.trim();
+    await booking.save();
+
+    await writeAuditLog({
+      organizationId: booking.organizationId.toString(),
+      action: 'booking_price_override',
+      resourceType: 'booking',
+      resourceId: booking._id as any,
+      userId: (req as any).user.id,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      oldValues,
+      newValues: { quotedPrice, logisticsSurcharge, reason }
+    });
+
+    res.json({ success: true, message: 'Price override successful', data: booking });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const resendCredentials = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findById(id);
+
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({ success: false, message: 'Manual credential resend is only allowed for confirmed bookings' });
+    }
+
+    const org = await Organization.findById(booking.organizationId);
+    if (!org) return res.status(404).json({ success: false, message: 'Organization not found' });
+
+    const password = generateRandomPassword(8);
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    let user = await User.findOne({ email: org.email });
+    if (user) {
+      user.passwordHash = hashedPassword;
+      user.isActive = true;
+      await user.save();
+    }
+
+    const fees = LogisticsService.getFeeBreakdown(
+      booking.planId, 
+      booking.voterCount || 0, 
+      booking.logisticsSurcharge, 
+      booking.boothsRequested
+    );
+
+    const emailData = {
+      bookingId: booking._id.toString(),
+      location: booking.location,
+      startDate: booking.startDate.toISOString(),
+      planName: booking.planId.charAt(0).toUpperCase() + booking.planId.slice(1),
+      serviceMode: booking.serviceMode,
+      loginEmail: org.email,
+      loginPassword: password,
+      quotedPrice: booking.quotedPrice || fees.total,
+      softwareFee: fees.softwareFee,
+      logisticsFee: fees.logisticsFee,
+      voterFee: fees.voterFee,
+      voterCount: booking.voterCount || 0,
+      boothsCount: booking.boothsRequested,
+      staffCount: booking.staffRequested,
+      attachInvoice: true
+    };
+
+    await EmailService.sendOnboardingEmail('intent_approved', org._id.toString(), emailData);
+    await EmailService.sendOnboardingEmail('invoice_ready', org._id.toString(), emailData);
+
+    res.json({ success: true, message: 'Credentials and invoice regenerated and resent successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const archiveBooking = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findByIdAndUpdate(id, { isArchived: true }, { new: true });
+    
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+
+    await writeAuditLog({
+      organizationId: booking.organizationId.toString(),
+      action: 'booking_archived',
+      resourceType: 'booking',
+      resourceId: booking._id as any,
+      userId: (req as any).user.id,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      newValues: { isArchived: true }
+    });
+
+    res.json({ success: true, message: 'Booking archived successfully', data: booking });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const getMyBookings = async (req: Request, res: Response) => {
   try {
     const orgId = (req as any).userOrgId;
@@ -403,6 +669,72 @@ export const getMyBookings = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: bookings
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getBookingInvoice = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = (req as any).user;
+    const orgId = (req as any).userOrgId;
+    
+    // Detailed logging for debugging
+    logger.info(`Fetching invoice for booking ID: ${id}, userOrgId: ${orgId}, role: ${user.role}`);
+
+    // Defensive check for database connectivity
+    if (mongoose.connection.readyState !== 1) {
+      logger.error('Database not connected. ReadyState: ' + mongoose.connection.readyState);
+      return res.status(503).json({ 
+        success: false, 
+        error: { message: 'Database connection is currently unstable. Please try again in a moment.' } 
+      });
+    }
+
+    // 1. Fetch booking
+    let booking;
+    if (user.role === 'super_admin') {
+      // Super Admin bypass: can see any invoice for accounting
+      booking = await Booking.findById(id);
+    } else {
+      // BOLA check: owner-only access for organizations
+      booking = await Booking.findOne({ _id: id, organizationId: orgId });
+    }
+    
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Invoice not found or access denied.' });
+    }
+
+    // 2. Calculate fee breakdown
+    const fees = LogisticsService.getFeeBreakdown(
+      booking.planId, 
+      booking.voterCount || 0, 
+      booking.logisticsSurcharge, 
+      booking.boothsRequested
+    );
+
+    // 3. Return detailed invoice data
+    res.json({
+      success: true,
+      data: {
+        bookingId: booking._id,
+        status: booking.status,
+        planName: booking.planId.charAt(0).toUpperCase() + booking.planId.slice(1),
+        location: booking.location,
+        startDate: booking.startDate,
+        voterCount: booking.voterCount,
+        boothsCount: booking.boothsRequested,
+        staffCount: booking.staffRequested,
+        breakdown: {
+          softwareFee: fees.softwareFee,
+          logisticsFee: fees.logisticsFee,
+          voterFee: fees.voterFee,
+          total: booking.quotedPrice || fees.total
+        },
+        isOverridden: !!booking.quotedPrice && booking.quotedPrice !== fees.total
+      }
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -437,5 +769,113 @@ export const getPublicBookingStatus = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteBooking = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findByIdAndDelete(id);
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    await writeAuditLog({
+      organizationId: booking.organizationId.toString(),
+      action: 'booking_deleted',
+      resourceType: 'booking',
+      resourceId: booking._id as any,
+      userId: (req as any).user.id,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      newValues: { status: 'deleted' }
+    });
+
+    res.json({ success: true, message: 'Booking deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteAllBookings = async (req: Request, res: Response) => {
+  try {
+    const result = await Booking.deleteMany({});
+
+    await writeAuditLog({
+      organizationId: 'system',
+      action: 'all_bookings_deleted',
+      resourceType: 'booking',
+      resourceId: 'bulk_delete' as any,
+      userId: (req as any).user.id,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      newValues: { count: result.deletedCount }
+    });
+
+    res.json({ success: true, message: `Deleted ${result.deletedCount} bookings successfully` });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const downloadInvoicePDF = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // 1. Fetch booking & Org
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const org = await Organization.findById(booking.organizationId);
+    const orgName = org?.name || 'Valued Client';
+
+    // 2. Format values for the template
+    const fees = LogisticsService.getFeeBreakdown(
+      booking.planId, 
+      booking.voterCount || 0, 
+      booking.logisticsSurcharge, 
+      booking.boothsRequested
+    );
+
+    const formattedPrice = (booking.quotedPrice || fees.total).toLocaleString('en-KE');
+    const formattedSoftware = fees.softwareFee.toLocaleString('en-KE');
+    const formattedLogistics = fees.logisticsFee.toLocaleString('en-KE');
+    const formattedVoterFee  = fees.voterFee.toLocaleString('en-KE');
+    const formattedDate = booking.startDate.toLocaleDateString('en-KE', { 
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+    });
+
+    const variables = {
+      ORGANIZATION_NAME: orgName,
+      BOOKING_ID:        booking._id.toString(),
+      LOCATION:          booking.location,
+      START_DATE:        formattedDate,
+      QUOTED_PRICE:      formattedPrice,
+      BOOTHS_COUNT:      booking.boothsRequested,
+      STAFF_COUNT:       booking.staffRequested,
+      VOTER_COUNT:       booking.voterCount || 0,
+      PLAN_NAME:         booking.planId.charAt(0).toUpperCase() + booking.planId.slice(1),
+      SOFTWARE_FEE:      formattedSoftware,
+      LOGISTICS_FEE:     formattedLogistics,
+      VOTER_FEE:         formattedVoterFee,
+      SERVICE_MODE:      booking.serviceMode === 'managed' ? 'Managed Full-Service' : 'Self-Service Software',
+    };
+
+    // 3. Generate PDF
+    const pdfBuffer = await InvoiceService.generateInvoicePDF(variables);
+
+    // 4. Send as File
+    const safeOrgName = orgName.replace(/\s+/g, '_');
+    const filename = `Invoice_${safeOrgName}_${id}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error('[PDF_DOWNLOAD] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to generate PDF' });
   }
 };

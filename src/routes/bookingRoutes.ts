@@ -16,6 +16,9 @@ router.get('/my', authenticate, requireOrgAccess, bookingController.getMyBooking
 // Request a new booking
 router.post('/reserve', authenticate, requireOrgAccess, bookingController.createBooking);
 
+// Get specific invoice
+router.get('/:id/invoice', authenticate, requireOrgAccess, bookingController.getBookingInvoice);
+
 // Admin-only: Verify/Cancel bookings
 router.patch('/:id/verify', authenticate, requireRole(['admin', 'super_admin']), bookingController.verifyBooking);
 

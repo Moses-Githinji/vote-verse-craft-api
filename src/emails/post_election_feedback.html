@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>Intent Already Submitted — KuraPap</title>
+  <title>Your Feedback Matters — KuraPap</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -27,7 +27,7 @@
     .wm-ico { display:inline-block; width:36px; height:36px; background:linear-gradient(135deg,#1A9E8F,#27C9B5); border-radius:6px; text-align:center; vertical-align:middle; line-height:36px; }
     .wm-txt { font-size:16px; font-weight:800; color:#F6F8FA; letter-spacing:-0.02em; margin-left:10px; vertical-align:middle; }
     .wm-txt span { color:#27C9B5; }
-    .badge { display:inline-block; background:rgba(255,165,0,0.15); border:1px solid rgba(255,165,0,0.4); border-radius:2px; padding:4px 10px; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#FFA500; margin-bottom:16px; }
+    .badge { display:inline-block; background:rgba(39,201,181,0.15); border:1px solid rgba(39,201,181,0.4); border-radius:2px; padding:4px 10px; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#27C9B5; margin-bottom:16px; }
     .hdr h1 { font-size:26px; font-weight:800; color:#F6F8FA; line-height:1.2; letter-spacing:-0.03em; margin-bottom:12px; }
     .hdr h1 em { font-style:normal; color:#27C9B5; }
     .hdr p { font-size:14px; color:#8aa8c0; line-height:1.6; }
@@ -35,13 +35,6 @@
     /* BODY */
     .body { padding:40px; background:#ffffff; }
     .greet { font-size:15px; color:#0C1B36; line-height:1.7; margin-bottom:28px; }
-
-    /* Details table */
-    .card { background:#F6F8FA; border:1px solid #D0D9E3; border-radius:4px; overflow:hidden; margin-bottom:32px; }
-    .card-hdr { padding:12px 20px; border-bottom:1px solid #D0D9E3; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#1A9E8F; }
-    .det-row td { padding:12px 20px; border-bottom:1px solid #D0D9E3; font-size:13px; color:#0C1B36; }
-    .det-row:last-child td { border-bottom:none; }
-    .det-key { color:#5A6A7E; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; }
 
     /* CTA */
     .cta { text-align:center; padding:28px 0; }
@@ -70,44 +63,31 @@
           </div>
           <span class="wm-txt">Kura<span>Pap</span></span>
         </div>
-        <div class="badge">Duplicate Detected</div>
-        <h1>Request already exists for this <em>institution</em>.</h1>
-        <p>It looks like a questionnaire was previously submitted using this email.</p>
+        <div class="badge">Election Completed</div>
+        <h1>How was your<br/>election <em>experience</em>?</h1>
+        <p>Your event at {{LOCATION}} has been successfully concluded.</p>
       </td>
     </tr>
     <tr>
       <td class="body">
         <p class="greet">
           Hello <strong>{{ORGANIZATION_NAME}}</strong>,<br/><br/>
-          We noticed that you've submitted a new request. However, our records show that you already have an active onboarding intent in our system.
+          Congratulations on completing your election! At KuraPap, we are committed to providing a zero-dispute election experience, and your feedback helps us maintain that guarantee.
         </p>
-
-        <!-- Details -->
-        <table class="card" width="100%" cellpadding="0" cellspacing="0">
-          <tr><td class="card-hdr" colspan="2">Original Submission Details</td></tr>
-          <tr class="det-row">
-            <td class="det-key" width="50%">Booking ID</td>
-            <td style="text-align:right;font-weight:700">#{{BOOKING_ID}}</td>
-          </tr>
-          <tr class="det-row">
-            <td class="det-key">Election Date</td>
-            <td style="text-align:right;font-weight:700">{{START_DATE}}</td>
-          </tr>
-        </table>
 
         <!-- CTA -->
         <table width="100%" cellpadding="0" cellspacing="0">
           <tr>
             <td class="cta">
-              <a href="{{STATUS_URL}}" class="cta-btn">View Status</a>
-              <div style="margin-top:12px;font-size:11px;color:#5A6A7E">Reply to this email if you need updates</div>
+              <a href="https://kurapap.io/feedback?bookingId={{BOOKING_ID}}" class="cta-btn">Share Your Feedback</a>
+              <div style="margin-top:12px;font-size:11px;color:#5A6A7E">It takes less than 2 minutes</div>
             </td>
           </tr>
         </table>
 
         <div style="height:1px;background:#E8EDF2;margin:24px 0"></div>
         <p style="font-size:11px;color:#5A6A7E;line-height:1.6">
-          To maintain logistics planning integrity, we only process one primary intent per institution per cycle.
+          Thank you for choosing KuraPap as your digital voting partner. We look forward to powering your next election!
         </p>
       </td>
     </tr>

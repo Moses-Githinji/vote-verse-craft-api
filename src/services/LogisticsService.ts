@@ -81,4 +81,28 @@ export class LogisticsService {
 
     return baseSoftwareFee + voterFee + logisticsSurcharge + resourcePremium;
   }
+
+  /**
+   * Returns the breakdown of fees for a configuration.
+   */
+  static getFeeBreakdown(planId: string, voterCount: number, logisticsSurcharge: number, boothsNeeded: number) {
+    let baseSoftwareFee = 0;
+
+    switch (planId) {
+      case 'starter': baseSoftwareFee = 10000; break;
+      case 'standard': baseSoftwareFee = 25000; break;
+      case 'premium': baseSoftwareFee = 50000; break;
+    }
+
+    const voterBuffer = 200;
+    const voterFee = voterCount > voterBuffer ? (voterCount - voterBuffer) * 10 : 0;
+    const resourcePremium = boothsNeeded > 10 ? (boothsNeeded - 10) * 2000 : 0;
+
+    return {
+      softwareFee: baseSoftwareFee,
+      voterFee: voterFee,
+      logisticsFee: logisticsSurcharge + resourcePremium,
+      total: baseSoftwareFee + voterFee + logisticsSurcharge + resourcePremium
+    };
+  }
 }

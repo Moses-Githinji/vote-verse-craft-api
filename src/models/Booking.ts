@@ -30,6 +30,7 @@ export interface IBooking extends Document {
   throughputStress?: 'low' | 'moderate' | 'high' | 'critical';
 
   notes?: string;
+  isArchived: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -82,11 +83,13 @@ const bookingSchema = new Schema(
     },
 
     notes: { type: String },
+    isArchived: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
 // Index for availability lookups: find overlapping bookings
 bookingSchema.index({ status: 1, setupDate: 1, teardownDate: 1 });
+bookingSchema.index({ isArchived: 1 });
 
 export const Booking = mongoose.model<IBooking>('Booking', bookingSchema);

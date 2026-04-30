@@ -51,39 +51,12 @@ export class EntitlementService {
     }
 
     const now = new Date();
-    let effectivePlanId = sub.planId as PlanId;
-    let status = sub.status;
+    let effectivePlanId = (sub.planId as PlanId) || 'enterprise';
+    let status: SubscriptionStatus = 'active'; // Always active as per one-off payment model
     let warning = false;
     let warningMessage: string | undefined;
 
-    // --- Grace period transition ---
-    if (status === 'past_due') {
-      const graceDays = sub.customGracePeriod ?? GRACE_PERIOD_DAYS;
-      const gracePeriodEnd = sub.gracePeriodEnd || new Date(sub.currentPeriodEnd.getTime() + graceDays * 86400000);
-
-      if (now <= gracePeriodEnd) {
-        // Still within grace window — allow full access + warn
-        warning = true;
-        const daysLeft = Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        warningMessage = `Your payment is overdue. You have ${daysLeft} day(s) remaining before features are restricted.`;
-        
-        // Auto-update gracePeriodEnd if it wasn't set
-        if (!sub.gracePeriodEnd) {
-          await Subscription.findByIdAndUpdate(sub._id, { gracePeriodEnd });
-        }
-      } else {
-        // Grace expired — hard-restrict
-        status = 'past_due_restricted';
-        await Subscription.findByIdAndUpdate(sub._id, { status: 'past_due_restricted' });
-      }
-    }
-
-    // --- Degraded mode for canceled/expired ---
-    if (status === 'canceled' || status === 'expired') {
-      effectivePlanId = FALLBACK_PLAN_ID;
-      warning = true;
-      warningMessage = 'Your subscription has ended. You are on the Starter plan. Upgrade to restore full access.';
-    }
+    // --- Grace period and degradation logic bypassed for one-off model ---
 
     // --- Validate planId exists in config (safety net) ---
     if (!PLAN_LIMITS[effectivePlanId]) {

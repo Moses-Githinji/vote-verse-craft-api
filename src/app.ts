@@ -25,6 +25,7 @@ const corsOptions = {
       'http://localhost:8081',
       'http://localhost:8080',
       'http://localhost:3000',
+      'http://localhost:5174',
       'https://kurapap-admin.vercel.app',
       'https://shulepal-connect.vercel.app'
     ];
@@ -36,7 +37,7 @@ const corsOptions = {
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 

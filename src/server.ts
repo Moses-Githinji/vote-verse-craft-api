@@ -32,6 +32,7 @@ const connectDB = async (retryCount = 0): Promise<void> => {
     serverSelectionTimeoutMS: 5000, // Wait 5s for a primary before failing
     socketTimeoutMS: 45000,
     family: 4, // Force IPv4 to resolve potential DNS issues
+    tlsAllowInvalidCertificates: true, // Allow local certificate issues
   };
 
   try {

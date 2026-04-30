@@ -3,22 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>Your Invoice Is Ready — KuraPap</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:#E8EDF2; font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; -webkit-font-smoothing:antialiased; color:#0C1B36; }
+    body { background:#E8EDF2; font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; -webkit-font-smoothing:antialiased; color:#0C1B36; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table { border-collapse: collapse !important; }
+  </style>
+  <!--[if mso]>
+  <style type="text/css">
+    table { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+  </style>
+  <![endif]-->
+  <style>
+    
     .wrap { background:#E8EDF2; padding:40px 16px; }
-    .box { max-width:600px; margin:0 auto; background:#ffffff; border:1px solid #D0D9E3; border-radius:4px; overflow:hidden; box-shadow:0 4px 24px rgba(12,27,54,0.08); }
+    .box { width: 100%; max-width:600px; margin:0 auto; background:#ffffff; border:1px solid #D0D9E3; border-radius:4px; overflow:hidden; }
 
     /* HEADER */
-    .hdr { background:linear-gradient(135deg,#0C1B36,#0A2035); padding:0; position:relative; overflow:hidden; }
-    .hdr::before { content:''; position:absolute; inset:0; background-image:linear-gradient(rgba(39,201,181,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(39,201,181,0.07) 1px,transparent 1px); background-size:32px 32px; }
-    .hdr::after { content:''; position:absolute; top:-40px; right:-60px; width:280px; height:280px; background:radial-gradient(circle,rgba(26,158,143,0.22),transparent 65%); }
-    .hdr-in { padding:48px 40px 40px; position:relative; z-index:2; }
-    .wm { display:inline-flex; align-items:center; gap:10px; margin-bottom:36px; }
-    .wm-ico { width:36px; height:36px; background:linear-gradient(135deg,#1A9E8F,#27C9B5); border-radius:6px; text-align:center; line-height:36px; box-shadow:0 0 20px rgba(26,158,143,0.5); }
-    .wm-txt { font-size:16px; font-weight:800; color:#F6F8FA; letter-spacing:-0.02em; }
+    .hdr { background:linear-gradient(135deg,#0C1B36,#0A2035); padding:48px 40px 40px; position:relative; }
+    .wm { margin-bottom:36px; }
+    .wm-ico { display:inline-block; width:36px; height:36px; background:linear-gradient(135deg,#1A9E8F,#27C9B5); border-radius:6px; text-align:center; vertical-align:middle; line-height:36px; }
+    .wm-txt { font-size:16px; font-weight:800; color:#F6F8FA; letter-spacing:-0.02em; margin-left:10px; vertical-align:middle; }
     .wm-txt span { color:#27C9B5; }
     .badge { display:inline-block; background:rgba(39,201,181,0.15); border:1px solid rgba(39,201,181,0.4); border-radius:2px; padding:4px 10px; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#27C9B5; margin-bottom:16px; }
     .hdr h1 { font-size:26px; font-weight:800; color:#F6F8FA; line-height:1.2; letter-spacing:-0.03em; margin-bottom:12px; }
@@ -28,229 +35,183 @@
     /* BODY */
     .body { padding:40px; background:#ffffff; }
     .greet { font-size:15px; color:#0C1B36; line-height:1.7; margin-bottom:28px; }
-    .greet strong { font-weight:700; }
 
-    /* Ribbons */
+    /* Ribbons (Stackable) */
     .ribbon-wrap { margin-bottom:28px; }
-    .ribbon-tbl { width:100%; border-collapse:separate; border-spacing:10px 0; }
-    .ribbon { padding:14px; background:#F6F8FA; border:1px solid #D0D9E3; border-radius:4px; text-align:center; }
+    .ribbon-tbl { width:100%; }
+    .ribbon { padding:14px; background:#F6F8FA; border:1px solid #D0D9E3; border-radius:4px; text-align:center; width:31%; }
     .ribbon.accent { border-color:#A7F3D0; background:#F0FDF9; }
     .ribbon-val { font-size:20px; font-weight:800; color:#0C1B36; }
     .ribbon.accent .ribbon-val { color:#1A9E8F; }
     .ribbon-lbl { font-size:10px; color:#5A6A7E; text-transform:uppercase; letter-spacing:0.1em; margin-top:4px; }
 
-    /* Invoice */
+    /* Invoice Header (Stackable) */
     .inv { background:#F6F8FA; border:1px solid #D0D9E3; border-radius:4px; overflow:hidden; margin-bottom:28px; }
     .inv-top { padding:16px 20px; border-bottom:1px solid #D0D9E3; }
-    .inv-top-tbl { width:100%; }
     .inv-title { font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#1A9E8F; margin-bottom:4px; }
     .inv-id { font-size:12px; color:#5A6A7E; font-family:'Courier New',monospace; }
     .inv-date-lbl { font-size:10px; color:#5A6A7E; text-transform:uppercase; letter-spacing:0.08em; }
     .inv-date-val { font-size:13px; font-weight:700; color:#0C1B36; }
 
-    /* Line items table */
-    .items { width:100%; border-collapse:collapse; }
+    /* Items table */
+    .items { width:100%; }
     .items th { padding:10px 20px; text-align:left; font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#5A6A7E; border-bottom:1px solid #D0D9E3; background:#ffffff; }
-    .items th:last-child { text-align:right; }
-    .items td { padding:14px 20px; font-size:13px; color:#0C1B36; border-bottom:1px solid #D0D9E3; vertical-align:top; }
-    .items td:last-child { text-align:right; font-weight:700; }
-    .items tr:last-child td { border-bottom:none; }
+    .items td { padding:14px 20px; font-size:13px; color:#0C1B36; border-bottom:1px solid #D0D9E3; }
     .item-desc { font-size:11px; color:#5A6A7E; margin-top:3px; }
 
     /* Total */
     .total-bar { padding:16px 20px; background:#0C1B36; }
-    .total-tbl { width:100%; }
     .total-lbl { font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#8aa8c0; }
-    .total-val { font-size:28px; font-weight:800; color:#27C9B5; letter-spacing:-0.03em; text-align:right; }
-    .total-sub { font-size:10px; color:#8aa8c0; text-align:right; margin-top:2px; }
-
-    /* Payment steps */
-    .pay { background:#F0FDF9; border:1px solid #A7F3D0; border-radius:4px; padding:20px; margin-bottom:28px; }
-    .pay-title { font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#1A9E8F; margin-bottom:14px; }
-    .pay-row { display:table; width:100%; margin-bottom:10px; }
-    .pay-row:last-child { margin-bottom:0; }
-    .pay-num-cell { display:table-cell; width:32px; vertical-align:top; }
-    .pay-num { width:22px; height:22px; border-radius:50%; background:linear-gradient(135deg,#1A9E8F,#27C9B5); color:#ffffff; font-size:11px; font-weight:800; line-height:22px; text-align:center; display:block; }
-    .pay-txt-cell { display:table-cell; vertical-align:top; padding-left:4px; }
-    .pay-txt { font-size:12px; color:#0C1B36; line-height:1.5; padding-top:3px; }
-    .pay-txt strong { color:#1A9E8F; }
+    .total-val { font-size:24px; font-weight:800; color:#27C9B5; letter-spacing:-0.03em; }
+    .total-sub { font-size:10px; color:#8aa8c0; margin-top:2px; }
 
     /* CTA */
-    .cta { text-align:center; margin-bottom:28px; }
-    .cta-btn { display:inline-block; background:linear-gradient(135deg,#1A9E8F,#27C9B5); color:#ffffff !important; text-decoration:none; font-size:13px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; padding:14px 36px; border-radius:2px; box-shadow:0 4px 16px rgba(26,158,143,0.3); }
-    .cta p { font-size:11px; color:#5A6A7E; margin-top:10px; }
-
-    .div { height:1px; background:#E8EDF2; margin:24px 0; }
-    .note { font-size:12px; color:#5A6A7E; line-height:1.7; }
-    .note strong { color:#0C1B36; }
+    .cta { text-align:center; padding:28px 0; }
+    .cta-btn { display:inline-block; background:linear-gradient(135deg,#1A9E8F,#27C9B5); color:#ffffff !important; text-decoration:none; font-size:13px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; padding:16px 40px; border-radius:2px; }
 
     /* FOOTER */
-    .ftr { padding:24px 40px; background:#F6F8FA; border-top:1px solid #D0D9E3; text-align:center; }
-    .ftr-links { margin-bottom:14px; }
-    .ftr-links a { color:#5A6A7E; text-decoration:none; font-size:11px; margin:0 8px; }
-    .ftr-copy { font-size:11px; color:#5A6A7E; line-height:1.6; }
-    .ftr-tag { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:#D0D9E3; margin-top:10px; }
+    .ftr { padding:32px 40px; background:#F6F8FA; border-top:1px solid #D0D9E3; text-align:center; }
+    .ftr-copy { font-size:11px; color:#5A6A7E; line-height:1.6; margin-top:12px; }
 
-    @media (max-width:600px) {
-      .hdr-in,.body { padding:32px 24px; }
-      .ftr { padding:24px; }
-      .hdr h1 { font-size:22px; }
+    @media screen and (max-width: 600px) {
+      .wrap { padding: 10px 0 !important; }
+      .box { border-radius: 0 !important; border: none !important; }
+      .hdr { padding: 32px 20px !important; }
+      .body { padding: 32px 20px !important; }
+      .ribbon { display: block !important; width: 100% !important; margin-bottom: 10px !important; }
+      .stack { display: block !important; width: 100% !important; text-align: left !important; }
+      .stack-right { text-align: left !important; padding-top: 10px !important; }
+      .total-val { font-size: 20px !important; }
     }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="box">
-
-    <!-- HEADER -->
-    <div class="hdr">
-      <div class="hdr-in">
+<center class="wrap">
+  <table class="box" cellpadding="0" cellspacing="0">
+    <tr>
+      <td class="hdr">
         <div class="wm">
           <div class="wm-ico">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0C1B36" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-top:8px">
-              <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-            </svg>
+            <img src="https://img.icons8.com/ios-filled/50/ffffff/checked-checkbox.png" width="20" style="vertical-align:middle;margin-bottom:4px" alt=""/>
           </div>
           <span class="wm-txt">Kura<span>Pap</span></span>
         </div>
-
-        <!-- Coin + invoice SVG -->
-        <div style="margin-bottom:28px">
-          <svg width="120" height="96" viewBox="0 0 120 96" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block">
-            <ellipse cx="60" cy="88" rx="38" ry="9" fill="rgba(26,158,143,0.1)"/>
-            <ellipse cx="82" cy="74" rx="18" ry="6" fill="#1A9E8F" opacity=".3"/>
-            <rect x="64" y="50" width="36" height="24" rx="0" fill="#0D2240"/>
-            <ellipse cx="82" cy="50" rx="18" ry="6" fill="#27C9B5" opacity=".6"/>
-            <ellipse cx="82" cy="62" rx="18" ry="6" fill="#1A9E8F" opacity=".4"/>
-            <ellipse cx="82" cy="74" rx="18" ry="5" fill="#27C9B5"/>
-            <text x="82" y="78" text-anchor="middle" font-family="monospace" font-size="8" font-weight="bold" fill="#0C1B36">KES</text>
-            <rect x="20" y="14" width="48" height="64" rx="3" fill="#ffffff" stroke="#27C9B5" stroke-width="1.5" stroke-dasharray="60 4"/>
-            <rect x="28" y="26" width="32" height="3" rx="1.5" fill="#D0D9E3"/>
-            <rect x="28" y="34" width="20" height="2" rx="1" fill="#D0D9E3"/>
-            <rect x="28" y="50" width="14" height="2" rx="1" fill="#D0D9E3"/>
-            <rect x="50" y="50" width="10" height="2" rx="1" fill="#27C9B5" opacity=".7"/>
-            <rect x="28" y="56" width="16" height="2" rx="1" fill="#D0D9E3"/>
-            <rect x="50" y="56" width="10" height="2" rx="1" fill="#27C9B5" opacity=".7"/>
-            <rect x="28" y="69" width="20" height="3" rx="1.5" fill="#1A9E8F"/>
-            <rect x="50" y="69" width="10" height="3" rx="1.5" fill="#1A9E8F"/>
-            <circle cx="56" cy="14" r="10" fill="#F6F8FA" stroke="#27C9B5" stroke-width="1.5"/>
-            <path d="M50 14 L54 18 L62 10" stroke="#27C9B5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-
         <div class="badge">Invoice Ready</div>
         <h1>Your custom quote is<br/><em>ready to view</em>.</h1>
-        <p>All resources have been allocated. Your election is confirmed<br/>pending payment acceptance.</p>
-      </div>
-    </div>
+        <p>All resources have been allocated. Your election is confirmed pending payment acceptance.</p>
+      </td>
+    </tr>
+    <tr>
+      <td class="body">
+        <p class="greet">
+          Hello <strong>{{ORGANIZATION_NAME}}</strong>,<br/><br/>
+          Our team has completed the logistics review for your election booking. Below is your detailed custom invoice.
+        </p>
 
-    <!-- BODY (light) -->
-    <div class="body">
-      <p class="greet">
-        Hello <strong>{{ORGANIZATION_NAME}}</strong>,<br/><br/>
-        Our team has completed the logistics review for your election booking.
-        Below is your detailed custom invoice. Resources have been reserved pending your confirmation.
-      </p>
-
-      <!-- Ribbons -->
-      <div class="ribbon-wrap">
-        <table class="ribbon-tbl"><tr>
-          <td class="ribbon accent"><div class="ribbon-val">{{BOOTHS_COUNT}}</div><div class="ribbon-lbl">Booths Allocated</div></td>
-          <td class="ribbon accent"><div class="ribbon-val">{{STAFF_COUNT}}</div><div class="ribbon-lbl">Technical Staff</div></td>
-          <td class="ribbon"><div class="ribbon-val">{{VOTER_COUNT}}</div><div class="ribbon-lbl">Registered Voters</div></td>
-        </tr></table>
-      </div>
-
-      <!-- Invoice card -->
-      <div class="inv">
-        <div class="inv-top">
-          <table class="inv-top-tbl"><tr>
-            <td>
-              <div class="inv-title">KuraPap DVaaS Invoice</div>
-              <div class="inv-id">REF: #{{BOOKING_ID}}</div>
+        <!-- Ribbons (Responsive) -->
+        <table class="ribbon-tbl" width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="ribbon accent">
+              <div class="ribbon-val">{{BOOTHS_COUNT}}</div>
+              <div class="ribbon-lbl">Booths</div>
             </td>
-            <td style="text-align:right">
-              <div class="inv-date-lbl">Election Date</div>
-              <div class="inv-date-val">{{START_DATE}}</div>
+            <td width="2%">&nbsp;</td>
+            <td class="ribbon accent">
+              <div class="ribbon-val">{{STAFF_COUNT}}</div>
+              <div class="ribbon-lbl">Staff</div>
             </td>
-          </tr></table>
-        </div>
-
-        <table class="items">
-          <thead>
-            <tr><th>Description</th><th>Amount (KES)</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>{{PLAN_NAME}} Software Licence<div class="item-desc">Platform access, voter management, results engine, audit trail</div></td>
-              <td>{{SOFTWARE_FEE}}</td>
-            </tr>
-            <tr>
-              <td>Logistics &amp; Deployment Surcharge<div class="item-desc">Booth transport, on-site setup &amp; teardown — {{LOCATION}}</div></td>
-              <td>{{LOGISTICS_FEE}}</td>
-            </tr>
-            <tr>
-              <td>Voter Scale Fee<div class="item-desc">{{VOTER_COUNT}} voters (first 200 inclusive)</div></td>
-              <td>{{VOTER_FEE}}</td>
-            </tr>
-          </tbody>
+            <td width="2%">&nbsp;</td>
+            <td class="ribbon">
+              <div class="ribbon-val">{{VOTER_COUNT}}</div>
+              <div class="ribbon-lbl">Voters</div>
+            </td>
+          </tr>
         </table>
 
-        <div class="total-bar">
-          <table class="total-tbl"><tr>
-            <td><div class="total-lbl">Total (incl. VAT)</div></td>
-            <td>
-              <div class="total-val">KES {{QUOTED_PRICE}}</div>
-              <div class="total-sub">Valid for 5 business days</div>
+        <div style="height:28px"></div>
+
+        <!-- Invoice Card -->
+        <table class="inv" width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="inv-top">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td class="stack">
+                    <div class="inv-title">Invoice</div>
+                    <div class="inv-id">REF: #{{BOOKING_ID}}</div>
+                  </td>
+                  <td class="stack stack-right" style="text-align:right">
+                    <div class="inv-date-lbl">Election Date</div>
+                    <div class="inv-date-val">{{START_DATE}}</div>
+                  </td>
+                </tr>
+              </table>
             </td>
-          </tr></table>
-        </div>
-      </div>
+          </tr>
+          <tr>
+            <td>
+              <table class="items" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <th width="70%">Description</th>
+                  <th style="text-align:right">Amount</th>
+                </tr>
+                <tr>
+                  <td>{{PLAN_NAME}} Licence<div class="item-desc">Software access & Voter mgmt</div></td>
+                  <td style="text-align:right;font-weight:700">{{SOFTWARE_FEE}}</td>
+                </tr>
+                <tr>
+                  <td>Logistics<div class="item-desc">{{LOCATION}}</div></td>
+                  <td style="text-align:right;font-weight:700">{{LOGISTICS_FEE}}</td>
+                </tr>
+                <tr>
+                  <td>Scale Fee<div class="item-desc">{{VOTER_COUNT}} voters</div></td>
+                  <td style="text-align:right;font-weight:700">{{VOTER_FEE}}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td class="total-bar">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td><div class="total-lbl">Total (incl. VAT)</div></td>
+                  <td style="text-align:right">
+                    <div class="total-val">KES {{QUOTED_PRICE}}</div>
+                    <div class="total-sub">Valid for 5 days</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
 
-      <!-- Payment steps -->
-      <div class="pay">
-        <div class="pay-title">How to Accept &amp; Pay</div>
-        <div class="pay-row">
-          <div class="pay-num-cell"><span class="pay-num">1</span></div>
-          <div class="pay-txt-cell"><div class="pay-txt">Review the invoice above and confirm all details are correct.</div></div>
-        </div>
-        <div class="pay-row">
-          <div class="pay-num-cell"><span class="pay-num">2</span></div>
-          <div class="pay-txt-cell"><div class="pay-txt">Click <strong>Confirm &amp; Pay</strong> below to proceed to our secure payment portal.</div></div>
-        </div>
-        <div class="pay-row">
-          <div class="pay-num-cell"><span class="pay-num">3</span></div>
-          <div class="pay-txt-cell"><div class="pay-txt">Payment accepted via M-Pesa Paybill or Bank Transfer. Resources are fully locked upon receipt.</div></div>
-        </div>
-      </div>
+        <!-- CTA -->
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="cta">
+              <a href="{{PAYMENT_URL}}" class="cta-btn">Confirm &amp; Pay Now</a>
+              <div style="margin-top:12px;font-size:11px;color:#5A6A7E">Secure checkout via M-Pesa or Card</div>
+            </td>
+          </tr>
+        </table>
 
-      <!-- CTA -->
-      <div class="cta">
-        <a href="{{PAYMENT_URL}}" class="cta-btn">Confirm &amp; Pay Now</a>
-        <p>Or reply to email to negotiate terms or request a breakdown call.</p>
-      </div>
-
-      <div class="div"></div>
-      <p class="note">
-        <strong>Important:</strong> Your resource reservation expires in <strong>5 business days</strong>.
-        After expiry, booth and staff availability cannot be guaranteed for your selected date.
-        Contact us at <strong>support@kurapap.co.ke</strong> if you need an extension.
-      </p>
-    </div>
-
-    <!-- FOOTER -->
-    <div class="ftr">
-      <div class="ftr-links">
-        <a href="#">Privacy Policy</a>
-        <a href="#">Terms of Service</a>
-        <a href="#">Contact Support</a>
-        <a href="#">Unsubscribe</a>
-      </div>
-      <p class="ftr-copy">KuraPap DVaaS · Nairobi, Kenya<br/>You received this because you submitted an election booking request.</p>
-      <p class="ftr-tag">Digital Voting as a Service · Zero-Dispute Guarantee</p>
-    </div>
-
-  </div>
-</div>
+        <div style="height:1px;background:#E8EDF2;margin:24px 0"></div>
+        <p style="font-size:12px;color:#5A6A7E;line-height:1.6">
+          <strong>Note:</strong> Your resource reservation expires in 5 business days. Contact support@kurapap.co.ke if you need an extension.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td class="ftr">
+        <p style="font-size:11px;color:#5A6A7E">
+          <a href="#" style="color:#5A6A7E;text-decoration:none;margin:0 8px">Terms</a>
+          <a href="#" style="color:#5A6A7E;text-decoration:none;margin:0 8px">Privacy</a>
+          <a href="#" style="color:#5A6A7E;text-decoration:none;margin:0 8px">Support</a>
+        </p>
+        <p class="ftr-copy">KuraPap DVaaS · Nairobi, Kenya<br/>Digital Voting as a Service</p>
+      </td>
+    </tr>
+  </table>
+</center>
 </body>
 </html>

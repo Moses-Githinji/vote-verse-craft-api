@@ -29,8 +29,10 @@ export const requireOrgAccess = (req: Request, res: Response, next: NextFunction
     return res.status(403).json({ success: false, error: { message: 'Organization access denied for this type' } });
   }
   
-  // Attach user's organization ID to request for use in controllers
-  (req as any).userOrgId = user.organization.id;
+  // Attach user's organization ID to request for use in controllers if it exists
+  if (user.organization && user.organization.id) {
+    (req as any).userOrgId = user.organization.id;
+  }
   next();
 };
 

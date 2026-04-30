@@ -4,6 +4,7 @@ import { Election } from '../models/Election';
 import { Voter } from '../models/Voter';
 import { Candidate } from '../models/Candidate';
 import { Vote } from '../models/Vote';
+import { OrganizationService } from '../services/OrganizationService';
 
 export const getOrganizations = async (req: Request, res: Response) => {
   try {
@@ -49,28 +50,9 @@ export const updateOrganization = async (req: Request, res: Response) => {
 
 export const deleteOrganization = async (req: Request, res: Response) => {
   try {
-    const orgId = req.params.id;
-    
-    // 1. Delete all Votes from all Elections in this Org
-    const elections = await Election.find({ organizationId: orgId }).select('_id');
-    const electionIds = elections.map(e => e._id);
-    
-    if (electionIds.length > 0) {
-      await Vote.deleteMany({ electionId: { $in: electionIds } });
-      await Candidate.deleteMany({ electionId: { $in: electionIds } });
-      await Election.deleteMany({ organizationId: orgId });
-    }
-    
-    // 2. Delete all Voters
-    await Voter.deleteMany({ organizationId: orgId });
-    
-    // 3. Delete the Organization itself
-    const org = await Organization.findByIdAndDelete(orgId);
-    
-    if (!org) {
-       return res.status(404).json({ success: false, error: { message: 'Organization not found' } });
-    }
-    res.json({ success: true, data: { message: 'Organization and all related data deleted successfully' } });
+    const orgId = req.params.id as string;
+    await OrganizationService.cascadeDelete([orgId]);
+    res.json({ success: true, message: 'Organization and all related data deleted successfully' });
   } catch (error: any) {
      res.status(500).json({ success: false, error: { message: error.message } });
   }

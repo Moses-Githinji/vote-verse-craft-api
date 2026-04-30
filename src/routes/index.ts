@@ -11,21 +11,29 @@ import { candidateRouter } from './candidateRoutes';
 import { mediaRouter } from './mediaRoutes';
 import { aiRouter } from './aiRoutes';
 import simulationRouter from './simulationRoutes';
-import { subscriptionRouter } from './subscriptionRoutes';
 import bookingRouter from './bookingRoutes';
 import { whatsappRouter } from './whatsappRoutes';
+import { eshopRouter } from './eshopRoutes';
+import { paymentRouter } from './paymentRoutes';
+import { subscriptionRouter } from './subscriptionRoutes';
+import publicRouter from './publicRoutes';
 
 export const apiRouter = Router();
 
-// Routes
+// Public Routes (No authentication required)
+apiRouter.use('/public', publicRouter);
+
+// Protected/Organization Routes
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/subscription', subscriptionRouter);
 apiRouter.use('/booking', bookingRouter);
+apiRouter.use('/payments', paymentRouter);
 apiRouter.use('/whatsapp', whatsappRouter);
 apiRouter.use('/simulate', simulationRouter);
 apiRouter.use('/:orgType/simulate', simulationRouter);
 apiRouter.use('/organizations', orgRouter); // Changed to orgRouter to match import, assuming instruction had a typo with organizationRouter
 apiRouter.use('/media', mediaRouter);
+apiRouter.use('/eshop', eshopRouter);
 
 // Organization specific routes - org type support added
 apiRouter.use('/:orgType/voters', voterRouter);
@@ -46,3 +54,7 @@ apiRouter.use('/elections/:id/results', resultsRouter);
 apiRouter.use('/audit', auditRouter);
 apiRouter.use('/dashboard', dashboardRouter);
 apiRouter.use('/ai', aiRouter);
+
+// Admin Routes
+import { adminRouter } from './adminRoutes';
+apiRouter.use('/admin', adminRouter);

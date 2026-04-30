@@ -20,7 +20,7 @@ export const login = async (req: Request, res: Response) => {
        return res.status(401).json({ success: false, error: { message: 'Invalid credentials' } });
     }
 
-    const org = user.organizationId as any;
+    const org = (user as any).organizationId;
 
     const payload = {
       id: user._id,
@@ -66,6 +66,7 @@ export const login = async (req: Request, res: Response) => {
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
+          role: user.role,
           organization: payload.organization
         },
         tokens: {

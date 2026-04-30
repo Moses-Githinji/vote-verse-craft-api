@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import juice from 'juice';
 import { Organization } from '../models/Organization';
+import { PDFService } from './PDFService';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Transporter — reads SMTP config from environment variables.
@@ -54,7 +55,7 @@ function htmlToText(html: string): string {
 // ─────────────────────────────────────────────────────────────────────────────
 // Email type definitions
 // ─────────────────────────────────────────────────────────────────────────────
-type EmailType = 'submission_received' | 'processing_started' | 'invoice_ready' | 'duplicate_intent';
+type EmailType = 'submission_received' | 'processing_started' | 'invoice_ready' | 'duplicate_intent' | 'intent_approved' | 'post_election_feedback';
 
 interface EmailData {
   bookingId?: string;
@@ -71,6 +72,9 @@ interface EmailData {
   logisticsFee?: number;
   voterFee?: number;
   serviceMode?: 'managed' | 'self_service';
+  loginEmail?: string;
+  loginPassword?: string;
+  attachInvoice?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -81,6 +85,8 @@ const SUBJECTS: Record<EmailType, string> = {
   processing_started:  "Your booking is under review — KuraPap",
   invoice_ready:       "Your custom election invoice is ready — KuraPap",
   duplicate_intent:    "Intent Already Submitted — KuraPap",
+  intent_approved:     "Your KuraPap Credentials — Get Started",
+  post_election_feedback: "How was your election experience? — KuraPap",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -144,6 +150,8 @@ export class EmailService {
       LOGISTICS_FEE:     formattedLogistics,
       VOTER_FEE:         formattedVoterFee,
       SERVICE_MODE:      serviceModeLabel,
+      LOGIN_EMAIL:       data.loginEmail    || '—',
+      LOGIN_PASSWORD:    data.loginPassword || '—',
     };
 
     // 5. Load & render the HTML template
@@ -153,6 +161,31 @@ export class EmailService {
     } catch (err: any) {
       console.error(`[EMAIL] Template load failed for "${type}":`, err.message);
       return;
+    }
+
+    // 5a. Handle PDF Invoice Attachment if requested
+    const attachments = [];
+    if (data.attachInvoice) {
+      try {
+        console.log(`[EMAIL] Generating PDF invoice for ${data.bookingId}...`);
+        
+        // We use the 'invoice_ready' template for the PDF regardless of the current email type
+        // This ensures the attached document is always the formal invoice
+        const invoiceHtml = type === 'invoice_ready' ? html : loadTemplate('invoice_ready', variables);
+        const pdfBuffer = await PDFService.generatePDF(invoiceHtml);
+        
+        const safeOrgName = (data.organizationName || 'Client').replace(/\s+/g, '_');
+        const filename = `Invoice_${safeOrgName}_${data.bookingId || 'Draft'}.pdf`;
+
+        attachments.push({
+          filename,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        });
+      } catch (pdfErr: any) {
+        console.error(`[EMAIL] Failed to attach PDF invoice:`, pdfErr.message);
+        // We continue sending the email even if PDF fails
+      }
     }
 
     // 6. Send the email
@@ -165,6 +198,7 @@ export class EmailService {
         subject: SUBJECTS[type],
         html,
         text:    htmlToText(html), // plain-text fallback for clients that block HTML
+        attachments
       });
 
       console.log(`[EMAIL] ✅ Sent "${SUBJECTS[type]}" → ${recipientEmail} (msgId: ${info.messageId})`);

@@ -3,22 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>Under Review — KuraPap</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:#E8EDF2; font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; -webkit-font-smoothing:antialiased; color:#0C1B36; }
+    body { background:#E8EDF2; font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; -webkit-font-smoothing:antialiased; color:#0C1B36; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table { border-collapse: collapse !important; }
+  </style>
+  <!--[if mso]>
+  <style type="text/css">
+    table { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+  </style>
+  <![endif]-->
+  <style>
+    
     .wrap { background:#E8EDF2; padding:40px 16px; }
-    .box { max-width:600px; margin:0 auto; background:#ffffff; border:1px solid #D0D9E3; border-radius:4px; overflow:hidden; box-shadow:0 4px 24px rgba(12,27,54,0.08); }
+    .box { width: 100%; max-width:600px; margin:0 auto; background:#ffffff; border:1px solid #D0D9E3; border-radius:4px; overflow:hidden; }
 
     /* HEADER */
-    .hdr { background:linear-gradient(135deg,#0C1B36,#0F2A48); padding:0; position:relative; overflow:hidden; }
-    .hdr::before { content:''; position:absolute; inset:0; background-image:linear-gradient(rgba(39,201,181,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(39,201,181,0.06) 1px,transparent 1px); background-size:24px 24px; }
-    .hdr::after { content:''; position:absolute; bottom:-70px; left:-40px; width:280px; height:280px; background:radial-gradient(circle,rgba(26,158,143,0.22),transparent 65%); }
-    .hdr-in { padding:48px 40px 40px; position:relative; z-index:2; }
-    .wm { display:inline-flex; align-items:center; gap:10px; margin-bottom:36px; }
-    .wm-ico { width:36px; height:36px; background:linear-gradient(135deg,#1A9E8F,#27C9B5); border-radius:6px; text-align:center; line-height:36px; box-shadow:0 0 20px rgba(26,158,143,0.5); }
-    .wm-txt { font-size:16px; font-weight:800; color:#F6F8FA; letter-spacing:-0.02em; }
+    .hdr { background:linear-gradient(135deg,#0C1B36,#0A2035); padding:48px 40px 40px; position:relative; }
+    .wm { margin-bottom:36px; }
+    .wm-ico { display:inline-block; width:36px; height:36px; background:linear-gradient(135deg,#1A9E8F,#27C9B5); border-radius:6px; text-align:center; vertical-align:middle; line-height:36px; }
+    .wm-txt { font-size:16px; font-weight:800; color:#F6F8FA; letter-spacing:-0.02em; margin-left:10px; vertical-align:middle; }
     .wm-txt span { color:#27C9B5; }
     .badge { display:inline-block; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.4); border-radius:2px; padding:4px 10px; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#F59E0B; margin-bottom:16px; }
     .hdr h1 { font-size:26px; font-weight:800; color:#F6F8FA; line-height:1.2; letter-spacing:-0.03em; margin-bottom:12px; }
@@ -28,163 +35,99 @@
     /* BODY */
     .body { padding:40px; background:#ffffff; }
     .greet { font-size:15px; color:#0C1B36; line-height:1.7; margin-bottom:28px; }
-    .greet strong { font-weight:700; }
 
     /* Progress bar */
-    .prog-lbl { display:table; width:100%; margin-bottom:8px; }
-    .prog-lbl-l { display:table-cell; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#5A6A7E; }
-    .prog-lbl-r { display:table-cell; text-align:right; font-size:11px; font-weight:700; color:#F59E0B; }
     .track { height:6px; background:#E8EDF2; border-radius:3px; overflow:hidden; margin-bottom:28px; }
     .fill { height:100%; width:45%; background:linear-gradient(90deg,#1A9E8F,#27C9B5); border-radius:3px; }
 
-    /* Checklist card */
-    .card { background:#F6F8FA; border:1px solid #D0D9E3; border-radius:4px; overflow:hidden; margin-bottom:28px; }
-    .card-hdr { padding:12px 20px; border-bottom:1px solid #D0D9E3; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#1A9E8F; }
-    .check { display:table; width:100%; border-collapse:collapse; }
-    .check-row { display:table-row; border-bottom:1px solid #D0D9E3; }
-    .check-row:last-child { border-bottom:none; }
-    .check-ico-cell { display:table-cell; width:52px; padding:14px 0 14px 20px; vertical-align:top; }
-    .check-ico { width:22px; height:22px; border-radius:50%; font-size:11px; font-weight:700; line-height:22px; text-align:center; display:block; }
+    /* Checklist */
+    .card { background:#F6F8FA; border:1px solid #D0D9E3; border-radius:4px; overflow:hidden; margin-bottom:32px; }
+    .check-row td { padding:14px 20px; border-bottom:1px solid #D0D9E3; }
+    .check-row:last-child td { border-bottom:none; }
+    .check-ico { width:22px; height:22px; border-radius:50%; font-size:11px; font-weight:800; line-height:22px; text-align:center; display:inline-block; }
     .check-ico.done { background:linear-gradient(135deg,#1A9E8F,#27C9B5); color:#ffffff; }
     .check-ico.active { background:#FEF3C7; border:1.5px solid #F59E0B; color:#D97706; line-height:19px; }
-    .check-ico.q { background:#F6F8FA; border:1px dashed #D0D9E3; color:#5A6A7E; }
-    .check-txt-cell { display:table-cell; padding:14px 20px 14px 0; vertical-align:top; }
-    .check-title { font-size:13px; font-weight:700; color:#0C1B36; margin-bottom:2px; }
-    .check-title.m { color:#5A6A7E; }
-    .check-desc { font-size:11px; color:#5A6A7E; line-height:1.5; }
-
-    /* Info box */
-    .info { background:#F0FDF9; border:1px solid #A7F3D0; border-left:3px solid #1A9E8F; border-radius:2px; padding:14px 18px; margin-bottom:28px; font-size:13px; color:#0C1B36; line-height:1.6; }
-    .info strong { color:#1A9E8F; }
 
     /* CTA */
-    .cta { text-align:center; margin-bottom:28px; }
-    .cta-btn { display:inline-block; background:linear-gradient(135deg,#1A9E8F,#27C9B5); color:#ffffff !important; text-decoration:none; font-size:13px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; padding:14px 36px; border-radius:2px; box-shadow:0 4px 16px rgba(26,158,143,0.3); }
-    .cta p { font-size:11px; color:#5A6A7E; margin-top:10px; }
-
-    .div { height:1px; background:#E8EDF2; margin:24px 0; }
-    .note { font-size:12px; color:#5A6A7E; line-height:1.7; }
-    .note strong { color:#0C1B36; }
+    .cta { text-align:center; padding:28px 0; }
+    .cta-btn { display:inline-block; background:linear-gradient(135deg,#1A9E8F,#27C9B5); color:#ffffff !important; text-decoration:none; font-size:13px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; padding:16px 40px; border-radius:2px; }
 
     /* FOOTER */
-    .ftr { padding:24px 40px; background:#F6F8FA; border-top:1px solid #D0D9E3; text-align:center; }
-    .ftr-links { margin-bottom:14px; }
-    .ftr-links a { color:#5A6A7E; text-decoration:none; font-size:11px; margin:0 8px; }
-    .ftr-copy { font-size:11px; color:#5A6A7E; line-height:1.6; }
-    .ftr-tag { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:#D0D9E3; margin-top:10px; }
+    .ftr { padding:32px 40px; background:#F6F8FA; border-top:1px solid #D0D9E3; text-align:center; }
 
-    @media (max-width:600px) {
-      .hdr-in,.body { padding:32px 24px; }
-      .ftr { padding:24px; }
-      .hdr h1 { font-size:22px; }
+    @media screen and (max-width: 600px) {
+      .wrap { padding: 10px 0 !important; }
+      .box { border-radius: 0 !important; border: none !important; }
+      .hdr { padding: 32px 20px !important; }
+      .body { padding: 32px 20px !important; }
+      .stack { display: block !important; width: 100% !important; text-align: left !important; }
     }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="box">
-
-    <!-- HEADER -->
-    <div class="hdr">
-      <div class="hdr-in">
+<center class="wrap">
+  <table class="box" cellpadding="0" cellspacing="0">
+    <tr>
+      <td class="hdr">
         <div class="wm">
           <div class="wm-ico">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0C1B36" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-top:8px">
-              <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-            </svg>
+            <img src="https://img.icons8.com/ios-filled/50/ffffff/checked-checkbox.png" width="20" style="vertical-align:middle;margin-bottom:4px" alt=""/>
           </div>
           <span class="wm-txt">Kura<span>Pap</span></span>
         </div>
-
-        <!-- Magnifying glass SVG illustration -->
-        <div style="margin-bottom:28px">
-          <svg width="110" height="96" viewBox="0 0 110 96" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block">
-            <ellipse cx="55" cy="84" rx="32" ry="8" fill="rgba(26,158,143,0.12)"/>
-            <rect x="26" y="18" width="46" height="58" rx="3" fill="#0A2035" stroke="#1a2d4a" stroke-width="1" transform="rotate(6 49 47)"/>
-            <rect x="22" y="14" width="46" height="58" rx="3" fill="#0D2240" stroke="#1a2d4a" stroke-width="1" transform="rotate(2 45 43)"/>
-            <rect x="20" y="12" width="46" height="58" rx="3" fill="#0F2A48" stroke="#27C9B5" stroke-width="1.5"/>
-            <rect x="28" y="24" width="30" height="3" rx="1.5" fill="#1a2d4a"/>
-            <rect x="28" y="32" width="24" height="3" rx="1.5" fill="#1a2d4a"/>
-            <rect x="28" y="40" width="28" height="3" rx="1.5" fill="#27C9B5" opacity=".4"/>
-            <rect x="28" y="48" width="18" height="3" rx="1.5" fill="#1a2d4a"/>
-            <circle cx="72" cy="56" r="20" fill="#0C1B36" stroke="#27C9B5" stroke-width="2"/>
-            <circle cx="72" cy="56" r="14" fill="#071828"/>
-            <defs><radialGradient id="g"><stop offset="0%" stop-color="#27C9B5"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs>
-            <circle cx="72" cy="56" r="14" fill="url(#g)" opacity=".2"/>
-            <path d="M65 56 L70 61 L80 51" stroke="#27C9B5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <line x1="83" y1="67" x2="94" y2="78" stroke="#27C9B5" stroke-width="3" stroke-linecap="round"/>
-          </svg>
-        </div>
-
         <div class="badge">Under Active Review</div>
         <h1>Your request is being<br/><em>carefully reviewed</em>.</h1>
-        <p>Our logistics team is cross-checking your requirements<br/>against live inventory right now.</p>
-      </div>
-    </div>
+        <p>Our logistics team is cross-checking your requirements right now.</p>
+      </td>
+    </tr>
+    <tr>
+      <td class="body">
+        <p class="greet">
+          Hello <strong>{{ORGANIZATION_NAME}}</strong>,<br/><br/>
+          Your booking (reference <strong style="color:#1A9E8F">#{{BOOKING_ID}}</strong>) has moved into active review. We are finalizing your logistics pricing.
+        </p>
 
-    <!-- BODY (light) -->
-    <div class="body">
-      <p class="greet">
-        Hello <strong>{{ORGANIZATION_NAME}}</strong>,<br/><br/>
-        Your booking (reference <strong style="color:#1A9E8F">#{{BOOKING_ID}}</strong>) has moved into active review.
-        Our team is verifying booth availability, confirming staff allocation, and finalising your logistics pricing.
-      </p>
+        <div style="font-size:11px;font-weight:700;color:#5A6A7E;margin-bottom:8px">REVIEW PROGRESS — 45%</div>
+        <div class="track"><div class="fill"></div></div>
 
-      <div class="prog-lbl">
-        <span class="prog-lbl-l">Review Progress</span>
-        <span class="prog-lbl-r">45% complete</span>
-      </div>
-      <div class="track"><div class="fill"></div></div>
+        <table class="card" width="100%" cellpadding="0" cellspacing="0">
+          <tr class="check-row">
+            <td width="50" valign="top"><span class="check-ico done">✓</span></td>
+            <td>
+              <div style="font-size:13px;font-weight:700;color:#0C1B36">Intent Data Validated</div>
+              <div style="font-size:11px;color:#5A6A7E">Requirements verified against thresholds.</div>
+            </td>
+          </tr>
+          <tr class="check-row">
+            <td valign="top"><span class="check-ico active">⋯</span></td>
+            <td>
+              <div style="font-size:13px;font-weight:700;color:#0C1B36">Resource Allocation</div>
+              <div style="font-size:11px;color:#5A6A7E">Assigning booths and technical staff.</div>
+            </td>
+          </tr>
+        </table>
 
-      <div class="card">
-        <div class="card-hdr">Review Checklist</div>
-        <div class="check">
-          <div class="check-row">
-            <div class="check-ico-cell"><span class="check-ico done">✓</span></div>
-            <div class="check-txt-cell"><div class="check-title">Intent Data Validated</div><div class="check-desc">Voter count, location, and duration verified against electoral thresholds.</div></div>
-          </div>
-          <div class="check-row">
-            <div class="check-ico-cell"><span class="check-ico done">✓</span></div>
-            <div class="check-txt-cell"><div class="check-title">Date Conflict Check Passed</div><div class="check-desc">Your selected date has no conflicting high-priority bookings.</div></div>
-          </div>
-          <div class="check-row">
-            <div class="check-ico-cell"><span class="check-ico active">⋯</span></div>
-            <div class="check-txt-cell"><div class="check-title">Resource Allocation</div><div class="check-desc">Assigning booths and technical staff. Optimising for your voter throughput model.</div></div>
-          </div>
-          <div class="check-row">
-            <div class="check-ico-cell"><span class="check-ico q">4</span></div>
-            <div class="check-txt-cell"><div class="check-title m">Invoice Generation</div><div class="check-desc">Custom pricing calculated once allocations are confirmed.</div></div>
-          </div>
-        </div>
-      </div>
+        <!-- CTA -->
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="cta">
+              <a href="{{STATUS_URL}}" class="cta-btn">View Live Status</a>
+            </td>
+          </tr>
+        </table>
 
-      <div class="info">
-        Your election is provisionally scheduled for <strong>{{START_DATE}}</strong> in <strong>{{LOCATION}}</strong>.
-        If anything changes, reply to this email or WhatsApp us at <strong>+254 700 000 000</strong>.
-      </div>
-
-      <div class="cta">
-        <a href="{{STATUS_URL}}" class="cta-btn">View Live Status</a>
-        <p>Updates are reflected in real time on your status page.</p>
-      </div>
-
-      <div class="div"></div>
-      <p class="note">Average review time is <strong>2–4 hours</strong> during business days (Mon–Fri, 8am–6pm EAT). Complex bookings may take up to one full business day.</p>
-    </div>
-
-    <!-- FOOTER -->
-    <div class="ftr">
-      <div class="ftr-links">
-        <a href="#">Privacy Policy</a>
-        <a href="#">Terms of Service</a>
-        <a href="#">Contact Support</a>
-        <a href="#">Unsubscribe</a>
-      </div>
-      <p class="ftr-copy">KuraPap DVaaS · Nairobi, Kenya<br/>You received this because you submitted an intent questionnaire.</p>
-      <p class="ftr-tag">Digital Voting as a Service · Zero-Dispute Guarantee</p>
-    </div>
-
-  </div>
-</div>
+        <div style="height:1px;background:#E8EDF2;margin:24px 0"></div>
+        <p style="font-size:11px;color:#5A6A7E;line-height:1.6">
+          Average review time is 2–4 hours during business days.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td class="ftr">
+        <p style="font-size:11px;color:#5A6A7E">KuraPap DVaaS · Nairobi, Kenya</p>
+      </td>
+    </tr>
+  </table>
+</center>
 </body>
 </html>
