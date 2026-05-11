@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { EShopOrder } from '../models/EShopOrder';
 import { writeAuditLog } from '../utils/audit';
+import mongoose from 'mongoose';
 
 /**
  * POST /eshop/orders
@@ -9,11 +10,13 @@ import { writeAuditLog } from '../utils/audit';
 export const createOrder = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { items, totalAmount, currency, paymentMethod } = req.body;
-    const organizationId = (req as any).user?.organizationId;
+    const orgId = (req as any).user?.organizationId || (req as any).userOrgId || (req as any).user?.organization?.id;
 
-    if (!organizationId) {
+    if (!orgId) {
       return res.status(403).json({ success: false, error: { message: 'Organization ID required' } });
     }
+
+    const organizationId = mongoose.Types.ObjectId.isValid(orgId) ? new mongoose.Types.ObjectId(orgId) : orgId;
 
     const order = new EShopOrder({
       organizationId,
@@ -28,7 +31,7 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
 
     // Audit log
     await writeAuditLog({
-      organizationId,
+      organizationId: organizationId as any,
       action: 'create_eshop_order',
       resourceType: 'eshop_order',
       resourceId: order._id as any,
@@ -48,12 +51,14 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
  */
 export const getMyOrders = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const organizationId = (req as any).user?.organizationId;
-    if (!organizationId) {
+    const orgId = (req as any).user?.organizationId || (req as any).userOrgId || (req as any).user?.organization?.id;
+    if (!orgId) {
       return res.status(403).json({ success: false, error: { message: 'Organization ID required' } });
     }
 
-    const orders = await EShopOrder.find({ organizationId })
+    const queryOrgId = mongoose.Types.ObjectId.isValid(orgId) ? new mongoose.Types.ObjectId(orgId) : orgId;
+
+    const orders = await EShopOrder.find({ organizationId: queryOrgId })
       .sort({ createdAt: -1 })
       .lean();
 
@@ -70,9 +75,15 @@ export const getMyOrders = async (req: Request, res: Response, next: NextFunctio
 export const getOrderById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const organizationId = (req as any).user?.organizationId;
+    const orgId = (req as any).user?.organizationId || (req as any).userOrgId || (req as any).user?.organization?.id;
 
-    const order = await EShopOrder.findOne({ _id: id, organizationId }).lean();
+    if (!orgId) {
+      return res.status(403).json({ success: false, error: { message: 'Organization ID required' } });
+    }
+
+    const queryOrgId = mongoose.Types.ObjectId.isValid(orgId) ? new mongoose.Types.ObjectId(orgId) : orgId;
+
+    const order = await EShopOrder.findOne({ _id: id, organizationId: queryOrgId }).lean();
     if (!order) {
       return res.status(404).json({ success: false, error: { message: 'Order not found' } });
     }

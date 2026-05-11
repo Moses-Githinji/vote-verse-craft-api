@@ -7,34 +7,34 @@
 
 export const PLAN_LIMITS = {
   starter: {
-    maxVoters: 50,
-    maxActiveElections: 1,
-    ballotAccess: 'basic' as const,
-    analyticsLevel: 'summary' as const,
-    branding: 'voteverse' as const,
-    offlineSupport: false,
-    auditTrailPdf: false,
-    maxCertificateGenerations: 1,
-    aiInsights: false,
-    aiBallotArchitect: false,
-    prioritySupport: false,
+    maxVoters: null,
+    maxActiveElections: null,
+    ballotAccess: 'all' as const,
+    analyticsLevel: 'ai' as const,
+    branding: 'whitelabel' as const,
+    offlineSupport: true,
+    auditTrailPdf: true,
+    maxCertificateGenerations: null,
+    aiInsights: true,
+    aiBallotArchitect: true,
+    prioritySupport: true,
   },
   pro: {
-    maxVoters: 1000,
-    maxActiveElections: 5,
-    ballotAccess: 'standard' as const,
-    analyticsLevel: 'detailed' as const,
-    branding: 'custom_logo' as const,
-    offlineSupport: false,
+    maxVoters: null,
+    maxActiveElections: null,
+    ballotAccess: 'all' as const,
+    analyticsLevel: 'ai' as const,
+    branding: 'whitelabel' as const,
+    offlineSupport: true,
     auditTrailPdf: true,
-    maxCertificateGenerations: 5,
-    aiInsights: false,
+    maxCertificateGenerations: null,
+    aiInsights: true,
     aiBallotArchitect: true,
     prioritySupport: true,
   },
   enterprise: {
-    maxVoters: null,            // null = unlimited
-    maxActiveElections: null,   // null = unlimited
+    maxVoters: null,
+    maxActiveElections: null,
     ballotAccess: 'all' as const,
     analyticsLevel: 'ai' as const,
     branding: 'whitelabel' as const,
@@ -52,7 +52,7 @@ export type PlanFeatureKey = keyof typeof PLAN_LIMITS[PlanId];
 export type PlanFeatures = typeof PLAN_LIMITS[PlanId];
 
 /** Ballot question types allowed per plan tier */
-export const BALLOT_ACCESS_TYPES: Record<typeof PLAN_LIMITS[PlanId]['ballotAccess'], string[]> = {
+export const BALLOT_ACCESS_TYPES: Record<string, string[]> = {
   basic: ['single', 'yesno', 'multi'],
   standard: ['single', 'yesno', 'multi', 'dropdown', 'linear', 'rating', 'paragraph', 'short', 'section', 'image_block', 'video_block', 'date', 'time', 'file', 'grid_multiple', 'grid_checkbox'],
   all: ['single', 'yesno', 'multi', 'dropdown', 'linear', 'rating', 'paragraph', 'short', 'section', 'image_block', 'video_block', 'date', 'time', 'file', 'grid_multiple', 'grid_checkbox', 'ranked'],

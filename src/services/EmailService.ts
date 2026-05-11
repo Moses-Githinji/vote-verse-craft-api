@@ -55,7 +55,13 @@ function htmlToText(html: string): string {
 // ─────────────────────────────────────────────────────────────────────────────
 // Email type definitions
 // ─────────────────────────────────────────────────────────────────────────────
-type EmailType = 'submission_received' | 'processing_started' | 'invoice_ready' | 'duplicate_intent' | 'intent_approved' | 'post_election_feedback';
+type EmailType =
+  | 'submission_received'
+  | 'processing_started'
+  | 'invoice_ready'
+  | 'duplicate_intent'
+  | 'intent_approved'
+  | 'post_election_feedback';
 
 interface EmailData {
   bookingId?: string;
@@ -75,6 +81,7 @@ interface EmailData {
   loginEmail?: string;
   loginPassword?: string;
   attachInvoice?: boolean;
+  organizationName?: string; // optional to support PDF filename generation
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,11 +89,11 @@ interface EmailData {
 // ─────────────────────────────────────────────────────────────────────────────
 const SUBJECTS: Record<EmailType, string> = {
   submission_received: "We've received your election request — KuraPap",
-  processing_started:  "Your booking is under review — KuraPap",
-  invoice_ready:       "Your custom election invoice is ready — KuraPap",
-  duplicate_intent:    "Intent Already Submitted — KuraPap",
-  intent_approved:     "Your KuraPap Credentials — Get Started",
-  post_election_feedback: "How was your election experience? — KuraPap",
+  processing_started: 'Your booking is under review — KuraPap',
+  invoice_ready: 'Your custom election invoice is ready — KuraPap',
+  duplicate_intent: 'Intent Already Submitted — KuraPap',
+  intent_approved: 'Your KuraPap Credentials — Get Started',
+  post_election_feedback: 'How was your election experience? — KuraPap',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -100,11 +107,7 @@ export class EmailService {
    * @param orgId   MongoDB ObjectId string of the Organisation
    * @param data    Dynamic data to inject into the template
    */
-  static async sendOnboardingEmail(
-    type: EmailType,
-    orgId: string,
-    data: EmailData
-  ): Promise<void> {
+  static async sendOnboardingEmail(type: EmailType, orgId: string, data: EmailData): Promise<void> {
     // 1. Resolve the recipient
     const org = await Organization.findById(orgId);
     if (!org) {
@@ -113,45 +116,49 @@ export class EmailService {
     }
 
     const recipientEmail = org.email;
-    const recipientName  = org.name || 'Valued Client';
+    const recipientName = org.name || 'Valued Client';
 
     // 2. Build the base URL for links
-    const baseUrl  = process.env.CLIENT_STATUS_BASE_URL || 'https://shulepal-connect.vercel.app';
-    const statusUrl  = data.statusUrl  || `${baseUrl}/status/${data.bookingId}`;
+    const baseUrl = process.env.CLIENT_STATUS_BASE_URL || 'https://shulepal-connect.vercel.app';
+    const statusUrl = data.statusUrl || `${baseUrl}/status/${data.bookingId}`;
     const paymentUrl = data.paymentUrl || `${baseUrl}/status/${data.bookingId}/pay`;
 
     // 3. Format values
-    const formattedPrice   = data.quotedPrice  ? data.quotedPrice.toLocaleString('en-KE')  : '—';
+    const formattedPrice = data.quotedPrice ? data.quotedPrice.toLocaleString('en-KE') : '—';
     const formattedSoftware = data.softwareFee ? data.softwareFee.toLocaleString('en-KE') : '—';
     const formattedLogistics = data.logisticsFee ? data.logisticsFee.toLocaleString('en-KE') : '—';
-    const formattedVoterFee  = data.voterFee ? data.voterFee.toLocaleString('en-KE') : '—';
+    const formattedVoterFee = data.voterFee ? data.voterFee.toLocaleString('en-KE') : '—';
     const formattedDate = data.startDate
-      ? new Date(data.startDate).toLocaleDateString('en-KE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+      ? new Date(data.startDate).toLocaleDateString('en-KE', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
       : '—';
 
     // 4. Resolve template variables
-    const serviceModeLabel = data.serviceMode === 'managed'
-      ? 'Managed Full-Service'
-      : 'Self-Service Software';
+    const serviceModeLabel =
+      data.serviceMode === 'managed' ? 'Managed Full-Service' : 'Self-Service Software';
 
     const variables: Record<string, string | number> = {
       ORGANIZATION_NAME: recipientName,
-      BOOKING_ID:        data.bookingId  || '—',
-      LOCATION:          data.location   || '—',
-      START_DATE:        formattedDate,
-      QUOTED_PRICE:      formattedPrice,
-      STATUS_URL:        statusUrl,
-      PAYMENT_URL:       paymentUrl,
-      BOOTHS_COUNT:      data.boothsCount  ?? '—',
-      STAFF_COUNT:       data.staffCount   ?? '—',
-      VOTER_COUNT:       data.voterCount   ?? '—',
-      PLAN_NAME:         data.planName     || 'Standard',
-      SOFTWARE_FEE:      formattedSoftware,
-      LOGISTICS_FEE:     formattedLogistics,
-      VOTER_FEE:         formattedVoterFee,
-      SERVICE_MODE:      serviceModeLabel,
-      LOGIN_EMAIL:       data.loginEmail    || '—',
-      LOGIN_PASSWORD:    data.loginPassword || '—',
+      BOOKING_ID: data.bookingId || '—',
+      LOCATION: data.location || '—',
+      START_DATE: formattedDate,
+      QUOTED_PRICE: formattedPrice,
+      STATUS_URL: statusUrl,
+      PAYMENT_URL: paymentUrl,
+      BOOTHS_COUNT: data.boothsCount ?? '—',
+      STAFF_COUNT: data.staffCount ?? '—',
+      VOTER_COUNT: data.voterCount ?? '—',
+      PLAN_NAME: data.planName || 'Standard',
+      SOFTWARE_FEE: formattedSoftware,
+      LOGISTICS_FEE: formattedLogistics,
+      VOTER_FEE: formattedVoterFee,
+      SERVICE_MODE: serviceModeLabel,
+      LOGIN_EMAIL: data.loginEmail || '—',
+      LOGIN_PASSWORD: data.loginPassword || '—',
     };
 
     // 5. Load & render the HTML template
@@ -168,19 +175,20 @@ export class EmailService {
     if (data.attachInvoice) {
       try {
         console.log(`[EMAIL] Generating PDF invoice for ${data.bookingId}...`);
-        
+
         // We use the 'invoice_ready' template for the PDF regardless of the current email type
         // This ensures the attached document is always the formal invoice
-        const invoiceHtml = type === 'invoice_ready' ? html : loadTemplate('invoice_ready', variables);
+        const invoiceHtml =
+          type === 'invoice_ready' ? html : loadTemplate('invoice_ready', variables);
         const pdfBuffer = await PDFService.generatePDF(invoiceHtml);
-        
+
         const safeOrgName = (data.organizationName || 'Client').replace(/\s+/g, '_');
         const filename = `Invoice_${safeOrgName}_${data.bookingId || 'Draft'}.pdf`;
 
         attachments.push({
           filename,
           content: pdfBuffer,
-          contentType: 'application/pdf'
+          contentType: 'application/pdf',
         });
       } catch (pdfErr: any) {
         console.error(`[EMAIL] Failed to attach PDF invoice:`, pdfErr.message);
@@ -194,14 +202,16 @@ export class EmailService {
     try {
       const info = await transporter.sendMail({
         from,
-        to:      `"${recipientName}" <${recipientEmail}>`,
+        to: `"${recipientName}" <${recipientEmail}>`,
         subject: SUBJECTS[type],
         html,
-        text:    htmlToText(html), // plain-text fallback for clients that block HTML
-        attachments
+        text: htmlToText(html), // plain-text fallback for clients that block HTML
+        attachments,
       });
 
-      console.log(`[EMAIL] ✅ Sent "${SUBJECTS[type]}" → ${recipientEmail} (msgId: ${info.messageId})`);
+      console.log(
+        `[EMAIL] ✅ Sent "${SUBJECTS[type]}" → ${recipientEmail} (msgId: ${info.messageId})`,
+      );
     } catch (err: any) {
       // Log but never crash the request — email is non-critical
       console.error(`[EMAIL] ❌ Failed to send "${type}" to ${recipientEmail}:`, err.message);

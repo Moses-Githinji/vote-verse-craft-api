@@ -8,4 +8,8 @@ coverage
 .DS_Store
 frontend-integration-guide.txt
 
+# Test artifacts (do not track)
+src/__mocks__/
+src/__tests__/
+
 

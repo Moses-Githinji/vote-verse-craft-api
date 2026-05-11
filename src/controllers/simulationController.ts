@@ -10,19 +10,23 @@ import { writeAuditLog } from '../utils/audit';
 export const generateSimulationData = async (req: Request, res: Response) => {
   try {
     const { orgType, organizationId } = req.body;
-    console.log(`[generateSimulationData] Request: orgType=${orgType}, organizationId=${organizationId}`);
-    
+    console.log(
+      `[generateSimulationData] Request: orgType=${orgType}, organizationId=${organizationId}`,
+    );
+
     // If specific org is provided, only generate for that one
     if (orgType && organizationId) {
       const org = await Organization.findById(organizationId);
       if (!org) {
         console.error(`[generateSimulationData] Org not found: ${organizationId}`);
-        return res.status(404).json({ success: false, error: { message: 'Organization not found' } });
+        return res
+          .status(404)
+          .json({ success: false, error: { message: 'Organization not found' } });
       }
 
       console.log(`[generateSimulationData] Generating for existing org: ${org.name} (${org._id})`);
       await generateVotersForOrg(org, orgType);
-      
+
       // Audit log simulation generation
       await writeAuditLog({
         organizationId: org._id,
@@ -32,12 +36,12 @@ export const generateSimulationData = async (req: Request, res: Response) => {
         userId: (req as any).user?.id,
         ipAddress: (req as any).ip,
         userAgent: (req as any).get('User-Agent'),
-        metadata: { orgType, voterCount: 100 }
+        metadata: { orgType, voterCount: 100 },
       });
 
-      return res.json({ 
-        success: true, 
-        data: { [orgType]: { orgId: org._id, voters: 100 } } 
+      return res.json({
+        success: true,
+        data: { [orgType]: { orgId: org._id, voters: 100 } },
       });
     }
 
@@ -46,14 +50,17 @@ export const generateSimulationData = async (req: Request, res: Response) => {
 
     for (const type of orgTypes) {
       // Find or create simulation organization for this type
-      let org = await Organization.findOne({ orgType: type, name: `Sim ${type.charAt(0).toUpperCase() + type.slice(1)} Org` });
+      let org = await Organization.findOne({
+        orgType: type,
+        name: `Sim ${type.charAt(0).toUpperCase() + type.slice(1)} Org`,
+      });
       if (!org) {
         org = await Organization.create({
           orgType: type as any,
           name: `Sim ${type.charAt(0).toUpperCase() + type.slice(1)} Org`,
           email: `sim-${type}@example.com`,
           isActive: true,
-          settings: new Map([['isSimulation', true]])
+          settings: new Map([['isSimulation', true]]),
         });
       }
 
@@ -69,18 +76,18 @@ export const generateSimulationData = async (req: Request, res: Response) => {
 
 async function generateVotersForOrg(org: any, type: string) {
   // Generate 100 simulation voters if they don't already exist
-  const existingVotersCount = await Voter.countDocuments({ 
+  const existingVotersCount = await Voter.countDocuments({
     organizationId: org._id,
-    'voterMetadata.isSimulation': true 
+    'voterMetadata.isSimulation': true,
   });
-  
+
   if (existingVotersCount < 100) {
     const votersToCreate = [];
     for (let i = existingVotersCount + 1; i <= 100; i++) {
       // Ensure we format the credential exactly as the UI Quick Login expects:
       // school -> SCHOOL-001, sacco -> SACCO-001, etc.
       const authCredential = `${type.toUpperCase()}-${i.toString().padStart(3, '0')}`;
-      
+
       votersToCreate.push({
         organizationId: org._id,
         name: `Sim Voter ${i}`,
@@ -88,7 +95,7 @@ async function generateVotersForOrg(org: any, type: string) {
         studentId: type === 'school' ? `S-${i}` : undefined,
         voterMetadata: new Map([['isSimulation', true]]),
         isActive: true,
-        hasVoted: false
+        hasVoted: false,
       });
     }
     await Voter.insertMany(votersToCreate);
@@ -107,7 +114,9 @@ export const startSimulation = async (req: Request, res: Response) => {
 
     const election = await Election.findById(electionId);
     if (!election || election.status !== 'active') {
-      return res.status(400).json({ success: false, error: { message: 'Active election not found' } });
+      return res
+        .status(400)
+        .json({ success: false, error: { message: 'Active election not found' } });
     }
 
     if (simulationInterval) {
@@ -130,17 +139,17 @@ export const startSimulation = async (req: Request, res: Response) => {
       }
 
       const voter = voters[voterIndex++];
-      
+
       // Generate random vote data based on ballot questions
       const voteData = new Map();
       election.ballotQuestions.forEach((q: any) => {
         if (['section', 'image_block', 'video_block'].includes(q.type)) return;
-        
+
         if (q.options && q.options.length > 0) {
           if (q.type === 'multi') {
             const numSelections = Math.floor(Math.random() * (q.maxSelections || 1)) + 1;
             const selected = [];
-            for(let i=0; i<numSelections; i++) {
+            for (let i = 0; i < numSelections; i++) {
               selected.push(q.options[Math.floor(Math.random() * q.options.length)]);
             }
             voteData.set(q.id, selected);
@@ -161,14 +170,23 @@ export const startSimulation = async (req: Request, res: Response) => {
           voteData,
           ipAddress: '127.0.0.1',
           userAgent: 'Simulation Engine',
-          voteTimestamp: new Date()
+          voteTimestamp: new Date(),
         });
-        
+
         await Voter.findByIdAndUpdate(voter._id, { hasVoted: true, votedAt: new Date() });
       } catch (err) {
         console.error('Simulation vote failed:', err);
       }
     }, speed);
+
+    // If running under test env, call .unref() so the interval doesn't keep the process alive
+    if (simulationInterval && typeof (simulationInterval as any).unref === 'function') {
+      try {
+        (simulationInterval as any).unref();
+      } catch (e) {
+        // ignore if platform doesn't support unref
+      }
+    }
 
     res.json({ success: true, message: `Simulation started for election ${electionId}` });
 
@@ -181,7 +199,7 @@ export const startSimulation = async (req: Request, res: Response) => {
       userId: (req as any).user?.id,
       ipAddress: (req as any).ip,
       userAgent: (req as any).get('User-Agent'),
-      metadata: { electionId, speed }
+      metadata: { electionId, speed },
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: { message: error.message } });
@@ -192,7 +210,7 @@ export const stopSimulation = (req: Request, res: Response) => {
   if (simulationInterval) {
     clearInterval(simulationInterval);
     simulationInterval = null;
-    
+
     // Audit log simulation stop (global/session scope)
     // We don't necessarily have the electionId here easily, but we can log the action
     res.json({ success: true, message: 'Simulation stopped' });
@@ -204,10 +222,12 @@ export const stopSimulation = (req: Request, res: Response) => {
 export const generateCandidates = async (req: Request, res: Response) => {
   try {
     const { electionId, count = 3 } = req.body;
-    if (!electionId) return res.status(400).json({ success: false, error: { message: 'Election ID required' } });
+    if (!electionId)
+      return res.status(400).json({ success: false, error: { message: 'Election ID required' } });
 
     const election = await Election.findById(electionId);
-    if (!election) return res.status(400).json({ success: false, error: { message: 'Election not found' } });
+    if (!election)
+      return res.status(400).json({ success: false, error: { message: 'Election not found' } });
 
     const candidatesToCreate = [];
     for (let i = 1; i <= count; i++) {
@@ -217,12 +237,12 @@ export const generateCandidates = async (req: Request, res: Response) => {
         description: `This is a simulation candidate for the ${election.title} election.`,
         manifesto: `Vote for me to ensure a great future! (Simulation ID: ${i})`,
         candidateMetadata: new Map([['isSimulation', true]]),
-        isActive: true
+        isActive: true,
       });
     }
 
     await Candidate.insertMany(candidatesToCreate);
-    
+
     // Audit log candidate generation
     await writeAuditLog({
       organizationId: election.organizationId,
@@ -232,10 +252,13 @@ export const generateCandidates = async (req: Request, res: Response) => {
       userId: (req as any).user?.id,
       ipAddress: (req as any).ip,
       userAgent: (req as any).get('User-Agent'),
-      metadata: { electionId, count }
+      metadata: { electionId, count },
     });
 
-    res.json({ success: true, message: `${count} candidates generated for election ${electionId}` });
+    res.json({
+      success: true,
+      message: `${count} candidates generated for election ${electionId}`,
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, error: { message: error.message } });
   }
@@ -253,23 +276,27 @@ export const clearSimulationVoters = async (req: Request, res: Response) => {
     const organizationId = req.query.organizationId || req.body.organizationId;
 
     if (!organizationId) {
-      return res.status(400).json({ success: false, error: { message: 'Organization ID required' } });
+      return res
+        .status(400)
+        .json({ success: false, error: { message: 'Organization ID required' } });
     }
 
     const simVoterQuery = {
       organizationId,
-      'voterMetadata.isSimulation': true
+      'voterMetadata.isSimulation': true,
     };
 
     // Identify all elections for this organization
     const orgElections = await Election.find({ organizationId }).select('_id');
-    const orgElectionIds = orgElections.map(e => e._id);
+    const orgElectionIds = orgElections.map((e) => e._id);
 
     // Deep Cleanup: Delete ALL votes associated with these elections
     // This ensures orphaned votes from deleted voters are also purged
     if (orgElectionIds.length > 0) {
       const voteResult = await Vote.deleteMany({ electionId: { $in: orgElectionIds } });
-      console.log(`[clearSimulationVoters] Purged ${voteResult.deletedCount} total votes for organization ${organizationId}`);
+      console.log(
+        `[clearSimulationVoters] Purged ${voteResult.deletedCount} total votes for organization ${organizationId}`,
+      );
     }
 
     const result = await Voter.deleteMany(simVoterQuery);
@@ -283,12 +310,12 @@ export const clearSimulationVoters = async (req: Request, res: Response) => {
       userId: (req as any).user?.id,
       ipAddress: (req as any).ip,
       userAgent: (req as any).get('User-Agent'),
-      metadata: { organizationId, deletedCount: result.deletedCount }
+      metadata: { organizationId, deletedCount: result.deletedCount },
     });
 
-    res.json({ 
-      success: true, 
-      message: `Cleared ${result.deletedCount} simulation voters for organization ${organizationId}` 
+    res.json({
+      success: true,
+      message: `Cleared ${result.deletedCount} simulation voters for organization ${organizationId}`,
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: { message: error.message } });

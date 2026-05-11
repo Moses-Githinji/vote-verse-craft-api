@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { Invoice } from '../models/Invoice';
 import { Expenditure } from '../models/Expenditure';
+import { Organization } from '../models/Organization';
+
 
 export const getInvoices = async (req: Request, res: Response) => {
   try {
@@ -8,14 +10,17 @@ export const getInvoices = async (req: Request, res: Response) => {
     const limit = Math.min(50, parseInt(String(req.query.limit || '20')));
     const skip = (page - 1) * limit;
 
+    const validOrgs = await Organization.find().select('_id').lean();
+    const validOrgIds = validOrgs.map((o) => o._id);
+
     const [invoices, total] = await Promise.all([
-      Invoice.find()
+      Invoice.find({ organizationId: { $in: validOrgIds } })
         .sort({ issuedAt: -1 })
         .skip(skip)
         .limit(limit)
         .populate('organizationId', 'name email')
         .lean(),
-      Invoice.countDocuments(),
+      Invoice.countDocuments({ organizationId: { $in: validOrgIds } }),
     ]);
 
     res.json({
@@ -90,9 +95,12 @@ export const getFinancialStats = async (req: Request, res: Response) => {
   try {
     const { timeframe } = req.query; // 'weekly', 'monthly', 'yearly'
     
+    const validOrgs = await Organization.find().select('_id').lean();
+    const validOrgIds = validOrgs.map((o) => o._id);
+    
     // Revenue is sum of amountPaid for 'paid' and 'partially_paid' invoices
     const revenueAggr = await Invoice.aggregate([
-      { $match: { status: { $in: ['paid', 'partially_paid'] } } },
+      { $match: { organizationId: { $in: validOrgIds }, status: { $in: ['paid', 'partially_paid'] } } },
       { $group: { _id: null, total: { $sum: '$amountPaid' } } }
     ]);
     const totalRevenue = revenueAggr[0]?.total || 0;
@@ -122,7 +130,7 @@ export const getFinancialStats = async (req: Request, res: Response) => {
     }
 
     const revenueTimeline = await Invoice.aggregate([
-      { $match: { status: { $in: ['paid', 'partially_paid'] } } },
+      { $match: { organizationId: { $in: validOrgIds }, status: { $in: ['paid', 'partially_paid'] } } },
       { 
         $group: { 
           _id: { $dateToString: { format: dateFormat, date: '$issuedAt' } }, 

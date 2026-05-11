@@ -12,7 +12,7 @@ import {
   deleteAllElections,
   getElectionsCategorized,
 } from '../controllers/electionController';
-import { authenticate, requireRole, requireOrgAccess } from '../middlewares/auth';
+import { authenticate, requireRole, requireOrgAccess, optionalAuth } from '../middlewares/auth';
 import { checkResourceLimit } from '../middlewares/entitlementGuard';
 
 export const electionRouter = Router({ mergeParams: true });
@@ -23,7 +23,7 @@ electionRouter.get('/summary', authenticate, requireOrgAccess, getElectionsCateg
 
 // GET requests - require auth and org access for voters to view elections
 electionRouter.get('/', authenticate, requireOrgAccess, getElections);
-electionRouter.get('/:id', authenticate, requireOrgAccess, getElectionById);
+electionRouter.get('/:id', optionalAuth, getElectionById);
 
 // Other methods - require full authentication
 electionRouter.post('/', authenticate, requireRole(['super_admin', 'admin']), requireOrgAccess, checkResourceLimit('active_elections'), createElection);

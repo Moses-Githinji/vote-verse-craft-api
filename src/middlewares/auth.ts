@@ -25,7 +25,7 @@ export const requireOrgAccess = (req: Request, res: Response, next: NextFunction
 
   // For routes with orgType param, verify it matches user's org type
   const urlOrgType = req.params.orgType;
-  if (urlOrgType && user.organization.type !== urlOrgType && user.role !== 'super_admin') {
+  if (urlOrgType && user.organization?.type !== urlOrgType && user.role !== 'super_admin') {
     return res.status(403).json({ success: false, error: { message: 'Organization access denied for this type' } });
   }
   

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Booking } from '../models/Booking';
 import { EShopOrder } from '../models/EShopOrder';
 import { PaymentTransaction } from '../models/PaymentTransaction';
+import { Invoice } from '../models/Invoice';
 import { Organization } from '../models/Organization';
 import { 
   initializePaystackTransaction, 
@@ -198,5 +199,53 @@ export const handleWebhook = async (req: Request, res: Response) => {
   } catch (error: any) {
     logger.error('Webhook processing error:', error);
     // Don't send 500 to Paystack if it's already acknowledged
+  }
+};
+
+/**
+ * GET /api/v1/payments/lock-status
+ * Check if the organization is locked due to unpaid invoices
+ */
+export const getAccountLockStatus = async (req: Request, res: Response) => {
+  try {
+    const organizationId = (req as any).userOrgId;
+    
+    if (!organizationId) {
+      return res.json({ success: true, data: { isLocked: false, reason: 'No organization context' } });
+    }
+    
+    // Find any unpaid/overdue invoices tied to bookings
+    const unpaidInvoices = await Invoice.find({
+      organizationId,
+      status: { $in: ['unpaid', 'overdue', 'partially_paid'] },
+      bookingId: { $exists: true }
+    }).populate('bookingId');
+
+    // Filter for bookings that are confirmed or completed (drafts don't lock)
+    const activeUnpaidInvoices = unpaidInvoices.filter((inv: any) => {
+      const booking = inv.bookingId;
+      return booking && (booking.status === 'confirmed' || booking.status === 'completed');
+    });
+    
+    const isLocked = activeUnpaidInvoices.length > 0;
+    logger.info(`Lock status for org ${organizationId}: ${isLocked} (${activeUnpaidInvoices.length} unpaid invoices)`);
+
+    res.json({
+      success: true,
+      data: {
+        isLocked,
+        unpaidCount: activeUnpaidInvoices.length,
+        invoices: activeUnpaidInvoices.map((inv: any) => ({
+          id: inv._id,
+          amount: inv.totalAmount,
+          status: inv.status,
+          bookingId: inv.bookingId?._id,
+          planId: inv.bookingId?.planId
+        }))
+      }
+    });
+  } catch (error: any) {
+    logger.error('Lock status check error:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };

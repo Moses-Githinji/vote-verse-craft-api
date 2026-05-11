@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { authenticate } from '../middlewares/auth';
-import { initiatePayment, verifyPayment, handleWebhook } from '../controllers/paymentController';
+import { authenticate, requireRole, requireOrgAccess } from '../middlewares/auth';
+import { initiatePayment, verifyPayment, handleWebhook, getAccountLockStatus } from '../controllers/paymentController';
 
 export const paymentRouter = Router();
 
@@ -8,5 +8,6 @@ export const paymentRouter = Router();
 paymentRouter.post('/webhook', handleWebhook);
 
 // Authenticated routes
-paymentRouter.post('/initiate', authenticate, initiatePayment);
-paymentRouter.get('/verify/:reference', authenticate, verifyPayment);
+paymentRouter.get('/lock-status', authenticate, requireOrgAccess, getAccountLockStatus);
+paymentRouter.post('/initiate', authenticate, requireOrgAccess, initiatePayment);
+paymentRouter.get('/verify/:reference', authenticate, requireOrgAccess, verifyPayment);

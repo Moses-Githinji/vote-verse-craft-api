@@ -17,6 +17,7 @@ import { eshopRouter } from './eshopRoutes';
 import { paymentRouter } from './paymentRoutes';
 import { subscriptionRouter } from './subscriptionRoutes';
 import publicRouter from './publicRoutes';
+import { fileRouter } from './fileRoutes';
 
 export const apiRouter = Router();
 
@@ -34,6 +35,11 @@ apiRouter.use('/:orgType/simulate', simulationRouter);
 apiRouter.use('/organizations', orgRouter); // Changed to orgRouter to match import, assuming instruction had a typo with organizationRouter
 apiRouter.use('/media', mediaRouter);
 apiRouter.use('/eshop', eshopRouter);
+apiRouter.use('/files', fileRouter);
+
+// Admin Routes
+import { adminRouter } from './adminRoutes';
+apiRouter.use('/admin', adminRouter);
 
 // Organization specific routes - org type support added
 apiRouter.use('/:orgType/voters', voterRouter);
@@ -54,7 +60,3 @@ apiRouter.use('/elections/:id/results', resultsRouter);
 apiRouter.use('/audit', auditRouter);
 apiRouter.use('/dashboard', dashboardRouter);
 apiRouter.use('/ai', aiRouter);
-
-// Admin Routes
-import { adminRouter } from './adminRoutes';
-apiRouter.use('/admin', adminRouter);

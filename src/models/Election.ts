@@ -60,7 +60,7 @@ const ballotQuestionSchema = new Schema(
     title: { type: String, required: false },
     description: String,
     options: { type: [String], default: [] },
-    optionImages: { type: Map, of: String },
+    optionImages: { type: Schema.Types.Mixed, default: {} },
     imageUrl: String,
     videoUrl: String,
     allowWriteIn: { type: Boolean, default: false },

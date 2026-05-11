@@ -1,9 +1,10 @@
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { logger } from '../utils/logger';
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_CLOUD_API_KEY || '');
+// Support multiple Google AI API key environment variable names
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_AI_API_KEY || '');
 let openaiClient: OpenAI | null = null;
 let anthropicClient: Anthropic | null = null;
 
@@ -67,9 +68,31 @@ export class AIService {
     }
   }
 
+  private static sanitizeHistory(history: AIMessage[]): AIMessage[] {
+    if (!history || !Array.isArray(history) || history.length === 0) return [];
+    const merged: AIMessage[] = [];
+    for (const msg of history) {
+      if (msg.role === 'system') continue;
+      const role = msg.role === 'assistant' ? 'assistant' : 'user';
+      const last = merged[merged.length - 1];
+      if (last && last.role === role) {
+        last.content += '\n' + msg.content;
+      } else {
+        merged.push({ role, content: msg.content });
+      }
+    }
+    // Ensure the first message is 'user' for Anthropic & Gemini
+    if (merged.length > 0 && merged[0].role !== 'user') {
+      merged.unshift({ role: 'user', content: 'Hello' });
+    }
+    return merged;
+  }
+
   static async generate(options: AIProviderOptions): Promise<AIResponse> {
     const providers = [
-      { name: 'Claude', fn: this.generateWithClaude.bind(this) }
+      { name: 'Claude', fn: this.generateWithClaude.bind(this) },
+      { name: 'Gemini', fn: this.generateWithGemini.bind(this) },
+      { name: 'OpenAI', fn: this.generateWithOpenAI.bind(this) }
     ];
 
     // Map tools to a common format
@@ -139,54 +162,68 @@ export class AIService {
   }
 
   private static async generateWithGemini(options: AIProviderOptions): Promise<AIResponse> {
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
-      tools: options.tools ? [{ functionDeclarations: options.tools }] : undefined,
-      systemInstruction: options.systemPrompt,
-      generationConfig: {
-        responseMimeType: options.responseSchema ? "application/json" : "text/plain",
-        responseSchema: options.responseSchema
-      }
-    });
+    const sanitizedHistory = this.sanitizeHistory(options.history);
+    const modelsToTry = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash"];
+    let lastError: any = null;
 
-    const chat = model.startChat({
-      history: options.history.slice(0, -1).map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
-      }))
-    });
-
-    const lastMessage = options.history[options.history.length - 1]?.content || "Please continue.";
-    const result = await chat.sendMessage(lastMessage);
-    const response = result.response;
-    const parts = response.candidates?.[0]?.content?.parts || [];
-
-    const calls = parts.filter(p => !!p.functionCall).map(c => ({
-      name: c.functionCall!.name,
-      args: c.functionCall!.args
-    }));
-    
-    const textPart = parts.find(p => !!p.text)?.text || "";
-
-    if (calls.length > 0) {
-      return { 
-        type: textPart ? 'mixed' : 'tool_call', 
-        calls, 
-        message: textPart || undefined,
-        provider: 'Gemini' 
-      };
-    }
-
-    if (options.responseSchema) {
+    for (const modelName of modelsToTry) {
       try {
-        const text = this.cleanJsonResponse(textPart);
-        return { type: 'content', content: JSON.parse(text), provider: 'Gemini' };
-      } catch (e) {
+        const model = genAI.getGenerativeModel({ 
+          model: modelName,
+          tools: options.tools ? [{ functionDeclarations: options.tools }] : undefined,
+          systemInstruction: options.systemPrompt,
+          generationConfig: {
+            responseMimeType: (!options.tools && options.responseSchema) ? "application/json" : "text/plain",
+            responseSchema: !options.tools ? options.responseSchema : undefined
+          }
+        });
+
+        const chat = model.startChat({
+          history: sanitizedHistory.slice(0, -1).map(m => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }]
+          }))
+        });
+
+        const lastMessage = sanitizedHistory[sanitizedHistory.length - 1]?.content || "Please continue.";
+        const result = await chat.sendMessage(lastMessage);
+        const response = result.response;
+        const parts = response.candidates?.[0]?.content?.parts || [];
+
+        const calls = parts.filter(p => !!p.functionCall).map(c => ({
+          name: c.functionCall!.name,
+          args: c.functionCall!.args
+        }));
+        
+        const textPart = parts.find(p => !!p.text)?.text || "";
+
+        if (calls.length > 0) {
+          return { 
+            type: textPart ? 'mixed' : 'tool_call', 
+            calls, 
+            message: textPart || undefined,
+            provider: 'Gemini' 
+          };
+        }
+
+        if (options.responseSchema) {
+          try {
+            const text = this.cleanJsonResponse(textPart);
+            return { type: 'content', content: JSON.parse(text), provider: 'Gemini' };
+          } catch (e) {
+            return { type: 'message', message: textPart, provider: 'Gemini' };
+          }
+        }
+
         return { type: 'message', message: textPart, provider: 'Gemini' };
+      } catch (err: any) {
+        lastError = err;
+        logger.warn(`[AIService] Gemini model ${modelName} failed: ${err.message || err}`);
+        continue;
       }
     }
 
-    return { type: 'message', message: textPart, provider: 'Gemini' };
+    throw lastError;
   }
 
   private static async generateWithOpenAI(options: AIProviderOptions): Promise<AIResponse> {
@@ -195,57 +232,70 @@ export class AIService {
     }
 
     const client = getOpenAI();
-    const response = await client.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: options.systemPrompt },
-        ...options.history.map(m => ({ role: m.role as any, content: m.content }))
-      ],
-      response_format: options.responseSchema ? { type: "json_object" } : undefined,
-      tools: options.tools?.map((t: any) => ({
-        type: "function",
-        function: {
-          name: t.name,
-          description: t.description,
-          parameters: t.parameters
-        }
-      }))
-    });
+    const modelsToTry = ["gpt-4o-mini", "gpt-4o"];
+    let lastError: any = null;
 
-    const message = response.choices[0].message;
-    const calls = message.tool_calls
-      ?.filter(tc => tc.type === 'function')
-      .map(tc => ({
-        name: tc.function.name,
-        args: JSON.parse(tc.function.arguments)
-      })) || [];
-
-    if (calls.length > 0) {
-      return {
-        type: message.content ? 'mixed' : 'tool_call',
-        calls,
-        message: message.content || undefined,
-        provider: 'OpenAI'
-      };
-    }
-
-    if (options.responseSchema) {
+    for (const modelName of modelsToTry) {
       try {
+        const response = await client.chat.completions.create({
+          model: modelName,
+          messages: [
+            { role: "system", content: options.systemPrompt },
+            ...options.history.map(m => ({ role: m.role as any, content: m.content }))
+          ],
+          response_format: (!options.tools && options.responseSchema) ? { type: "json_object" } : undefined,
+          tools: options.tools?.map((t: any) => ({
+            type: "function",
+            function: {
+              name: t.name,
+              description: t.description,
+              parameters: t.parameters
+            }
+          }))
+        });
+
+        const message = response.choices[0].message;
+        const calls = message.tool_calls
+          ?.filter(tc => tc.type === 'function')
+          .map(tc => ({
+            name: tc.function.name,
+            args: JSON.parse(tc.function.arguments)
+          })) || [];
+
+        if (calls.length > 0) {
+          return {
+            type: message.content ? 'mixed' : 'tool_call',
+            calls,
+            message: message.content || undefined,
+            provider: 'OpenAI'
+          };
+        }
+
+        if (options.responseSchema) {
+          try {
+            return {
+              type: 'content',
+              content: JSON.parse(message.content || '{}'),
+              provider: 'OpenAI'
+            };
+          } catch (e) {
+            return { type: 'message', message: message.content || "", provider: 'OpenAI' };
+          }
+        }
+
         return {
-          type: 'content',
-          content: JSON.parse(message.content || '{}'),
+          type: 'message',
+          message: message.content || "",
           provider: 'OpenAI'
         };
-      } catch (e) {
-        return { type: 'message', message: message.content || "", provider: 'OpenAI' };
+      } catch (err: any) {
+        lastError = err;
+        logger.warn(`[AIService] OpenAI model ${modelName} failed: ${err.message || err}`);
+        continue;
       }
     }
 
-    return {
-      type: 'message',
-      message: message.content || "",
-      provider: 'OpenAI'
-    };
+    throw lastError;
   }
 
   private static async generateWithClaude(options: AIProviderOptions): Promise<AIResponse> {
@@ -266,45 +316,65 @@ export class AIService {
       logger.info(`[AIService] Claude Tools count: ${claudeTools.length}`);
     }
 
-    const response = await client.messages.create({
-      model: "claude-3-haiku-20240307",
-      max_tokens: 4000,
-      system: options.systemPrompt,
-      messages: options.history
-        .filter(m => m.role !== 'system')
-        .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-      tools: claudeTools
-    });
+    const sanitizedHistory = this.sanitizeHistory(options.history);
+    const modelsToTry = [
+      "claude-3-5-sonnet-latest",
+      "claude-3-5-sonnet-20241022",
+      "claude-3-haiku-20240307"
+    ];
 
-    const calls = response.content
-      .filter(p => p.type === 'tool_use')
-      .map((tu: any) => ({ name: tu.name, args: tu.input }));
+    let lastError: any = null;
 
-    const textPart = response.content.find(p => p.type === 'text');
-    const rawText = textPart && textPart.type === 'text' ? textPart.text : '';
-    
-    if (calls.length > 0) {
-      return {
-        type: rawText ? 'mixed' : 'tool_call',
-        calls,
-        message: rawText || undefined,
-        provider: 'Claude'
-      };
-    }
-    
-    if (options.responseSchema) {
+    for (const modelName of modelsToTry) {
       try {
-        const text = this.cleanJsonResponse(rawText);
-        return { type: 'content', content: JSON.parse(text), provider: 'Claude' };
-      } catch (e) {
-        return { type: 'message', message: rawText, provider: 'Claude' };
+        const response = await client.messages.create({
+          model: modelName,
+          max_tokens: 4000,
+          system: options.systemPrompt,
+          messages: sanitizedHistory.map(m => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content
+          })),
+          tools: claudeTools
+        });
+
+        const calls = response.content
+          .filter(p => p.type === 'tool_use')
+          .map((tu: any) => ({ name: tu.name, args: tu.input }));
+
+        const textPart = response.content.find(p => p.type === 'text');
+        const rawText = textPart && textPart.type === 'text' ? textPart.text : '';
+        
+        if (calls.length > 0) {
+          return {
+            type: rawText ? 'mixed' : 'tool_call',
+            calls,
+            message: rawText || undefined,
+            provider: 'Claude'
+          };
+        }
+        
+        if (options.responseSchema) {
+          try {
+            const text = this.cleanJsonResponse(rawText);
+            return { type: 'content', content: JSON.parse(text), provider: 'Claude' };
+          } catch (e) {
+            return { type: 'message', message: rawText, provider: 'Claude' };
+          }
+        }
+
+        return {
+          type: 'message',
+          message: rawText,
+          provider: 'Claude'
+        };
+      } catch (err: any) {
+        lastError = err;
+        logger.warn(`[AIService] Claude model ${modelName} failed: ${err.message || err}`);
+        continue;
       }
     }
 
-    return {
-      type: 'message',
-      message: rawText,
-      provider: 'Claude'
-    };
+    throw lastError;
   }
 }

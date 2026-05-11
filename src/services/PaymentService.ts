@@ -138,7 +138,7 @@ export class PaymentService {
       await user.save();
     }
 
-    // 4. Send Confirmation Emails
+    // 4. Send Confirmation Emails (Background)
     const fees = LogisticsService.getFeeBreakdown(
       booking.planId, 
       booking.voterCount || 0, 
@@ -164,31 +164,33 @@ export class PaymentService {
       attachInvoice: true
     };
 
-    await EmailService.sendOnboardingEmail('intent_approved', org._id.toString(), emailData)
+    EmailService.sendOnboardingEmail('intent_approved', org._id.toString(), emailData)
       .catch(err => logger.error('Email confirmation failed:', err));
 
-    // 5. WhatsApp Notification
+    // 5. WhatsApp Notification (Background)
     if (org.phone) {
-      try {
-        // Generate and upload invoice for WhatsApp attachment
-        const invoiceUrl = await InvoiceService.getInvoiceUrl(booking);
-        
-        await WhatsAppService.sendBookingConfirmation(
-          org.phone, 
-          booking._id.toString(), 
-          booking.startDate.toISOString().split('T')[0],
-          invoiceUrl
-        );
-        logger.info(`[WHATSAPP] Sent confirmation with invoice to ${org.phone}`);
-      } catch (err: any) {
-        // Fallback to sending without invoice if PDF/Cloudinary fails
-        logger.error('[WHATSAPP] Failed to attach invoice, sending text only:', err.message);
-        await WhatsAppService.sendBookingConfirmation(
-          org.phone, 
-          booking._id.toString(), 
-          booking.startDate.toISOString().split('T')[0]
-        ).catch(werr => logger.error('WhatsApp fallback failed:', werr));
-      }
+      (async () => {
+        try {
+          // Generate and upload invoice for WhatsApp attachment
+          const invoiceUrl = await InvoiceService.getInvoiceUrl(booking);
+          
+          await WhatsAppService.sendBookingConfirmation(
+            org.phone, 
+            booking._id.toString(), 
+            booking.startDate.toISOString().split('T')[0],
+            invoiceUrl
+          );
+          logger.info(`[WHATSAPP] Sent confirmation with invoice to ${org.phone}`);
+        } catch (err: any) {
+          // Fallback to sending without invoice if PDF/Cloudinary fails
+          logger.error('[WHATSAPP] Failed to attach invoice, sending text only:', err.message);
+          await WhatsAppService.sendBookingConfirmation(
+            org.phone, 
+            booking._id.toString(), 
+            booking.startDate.toISOString().split('T')[0]
+          ).catch(werr => logger.error('WhatsApp fallback failed:', werr));
+        }
+      })();
     }
   }
 }

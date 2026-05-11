@@ -61,6 +61,7 @@ export const verifyPaystackTransaction = async (reference: string) => {
         headers: {
           Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
         },
+        timeout: 10000, // 10 seconds timeout
       }
     );
 

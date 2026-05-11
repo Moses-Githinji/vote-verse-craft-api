@@ -12,11 +12,12 @@ import * as financeController from '../controllers/financeController';
 import * as adminUserController from '../controllers/adminUserController';
 import { EShopOrder } from '../models/EShopOrder';
 import { OrganizationService } from '../services/OrganizationService';
+import { adminEquipmentRouter } from './adminEquipmentRoutes';
 
 export const adminRouter = Router();
 
-// All admin routes require authentication + super_admin role
-adminRouter.use(authenticate, isSuperAdmin);
+// All admin routes require authentication; specific routes will enforce super_admin where needed
+adminRouter.use(authenticate);
 
 // ── GET /admin/stats ─────────────────────────────────────────────────────
 adminRouter.get('/stats', async (req, res, next) => {
@@ -45,11 +46,7 @@ adminRouter.get('/stats', async (req, res, next) => {
           const subMap = Object.fromEntries(subs.map((s) => [String(s.organizationId), s]));
           return orgs.map((o) => ({ ...o, subscription: subMap[String(o._id)] || null }));
         }),
-      Booking.find()
-        .sort({ createdAt: -1 })
-        .limit(5)
-        .populate('organizationId', 'name')
-        .lean(),
+      Booking.find().sort({ createdAt: -1 }).limit(5).populate('organizationId', 'name').lean(),
     ]);
 
     res.json({
@@ -80,10 +77,11 @@ adminRouter.get('/organizations', async (req, res, next) => {
     const subStatus = String(req.query.subStatus || '').trim();
 
     const filter: Record<string, unknown> = {};
-    if (search) filter.$or = [
-      { name: { $regex: search, $options: 'i' } },
-      { email: { $regex: search, $options: 'i' } },
-    ];
+    if (search)
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ];
     if (orgType) filter.orgType = orgType;
 
     const [orgsList, total] = await Promise.all([
@@ -99,7 +97,10 @@ adminRouter.get('/organizations', async (req, res, next) => {
     const subMap = Object.fromEntries(subs.map((s) => [String(s.organizationId), s]));
 
     // Filter by subStatus if provided (post-join)
-    let organizations = orgsList.map((o) => ({ ...o, subscription: subMap[String(o._id)] || null }));
+    let organizations = orgsList.map((o) => ({
+      ...o,
+      subscription: subMap[String(o._id)] || null,
+    }));
     if (subStatus) {
       organizations = organizations.filter((o) => o.subscription?.status === subStatus);
     }
@@ -122,7 +123,8 @@ adminRouter.get('/organizations', async (req, res, next) => {
 adminRouter.get('/organizations/:id', async (req, res, next) => {
   try {
     const org = await Organization.findById(req.params.id).lean();
-    if (!org) return res.status(404).json({ success: false, error: { message: 'Organization not found' } });
+    if (!org)
+      return res.status(404).json({ success: false, error: { message: 'Organization not found' } });
 
     const [subscription, elections, bookings] = await Promise.all([
       Subscription.findOne({ organizationId: org._id }).lean(),
@@ -136,22 +138,25 @@ adminRouter.get('/organizations/:id', async (req, res, next) => {
   }
 });
 
-// ── DELETE /admin/organizations/bulk ────────────────────────────────────
-adminRouter.delete('/organizations/bulk', async (req, res, next) => {
+// ── DELETE /admin/organizations/bulk (super_admin only) ────────────────────────────────────
+adminRouter.delete('/organizations/bulk', isSuperAdmin, async (req, res, next) => {
   try {
     const { ids } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ success: false, message: 'Valid "ids" array is required' });
     }
     const result = await OrganizationService.cascadeDelete(ids);
-    res.json({ success: true, message: `Deleted ${result?.deletedCount} organizations and all related data` });
+    res.json({
+      success: true,
+      message: `Deleted ${result?.deletedCount} organizations and all related data`,
+    });
   } catch (err) {
     next(err);
   }
 });
 
-// ── DELETE /admin/organizations/:id ─────────────────────────────────────
-adminRouter.delete('/organizations/:id', async (req, res, next) => {
+// ── DELETE /admin/organizations/:id (super_admin only) ─────────────────────────────────----
+adminRouter.delete('/organizations/:id', isSuperAdmin, async (req, res, next) => {
   try {
     const id = req.params.id as string;
     await OrganizationService.cascadeDelete([id]);
@@ -166,7 +171,8 @@ adminRouter.patch('/organizations/:id/active', async (req, res, next) => {
   try {
     const { isActive } = req.body;
     const org = await Organization.findByIdAndUpdate(req.params.id, { isActive }, { new: true });
-    if (!org) return res.status(404).json({ success: false, error: { message: 'Organization not found' } });
+    if (!org)
+      return res.status(404).json({ success: false, error: { message: 'Organization not found' } });
     res.json({ success: true, data: org });
   } catch (err) {
     next(err);
@@ -201,11 +207,11 @@ adminRouter.get('/bookings', async (req, res, next) => {
 
     res.json({
       success: true,
-      data: { 
-        bookings: filteredBookings, 
-        total: filteredBookings.length, 
-        page, 
-        totalPages: Math.ceil(filteredBookings.length / limit) 
+      data: {
+        bookings: filteredBookings,
+        total: filteredBookings.length,
+        page,
+        totalPages: Math.ceil(filteredBookings.length / limit),
       },
     });
   } catch (err) {
@@ -253,11 +259,11 @@ adminRouter.get('/subscriptions', async (req, res, next) => {
 
     res.json({
       success: true,
-      data: { 
-        subscriptions: filteredSubscriptions, 
-        total: filteredSubscriptions.length, 
-        page, 
-        totalPages: Math.ceil(filteredSubscriptions.length / limit) 
+      data: {
+        subscriptions: filteredSubscriptions,
+        total: filteredSubscriptions.length,
+        page,
+        totalPages: Math.ceil(filteredSubscriptions.length / limit),
       },
     });
   } catch (err) {
@@ -286,12 +292,12 @@ adminRouter.get('/elections', async (req, res, next) => {
     const orgIds = elections.map((el: any) => el.organizationId._id);
     const bookings = await Booking.find({ organizationId: { $in: orgIds } }).lean();
     const bookingMap = Object.fromEntries(
-      orgIds.map(id => {
-        const orgBookings = bookings.filter(b => String(b.organizationId) === String(id));
+      orgIds.map((id) => {
+        const orgBookings = bookings.filter((b) => String(b.organizationId) === String(id));
         // Sort by date to get most relevant or recent
-        const latest = orgBookings.sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+        const latest = orgBookings.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
         return [String(id), latest];
-      })
+      }),
     );
 
     // Map populate alias and add insights
@@ -300,9 +306,16 @@ adminRouter.get('/elections', async (req, res, next) => {
       return {
         ...el,
         organization: el.organizationId,
-        serviceNature: b ? (b.serviceMode === 'managed' ? 'Managed Event' : 'Software Service') : 'Standard',
-        totalCharged: b ? (b.quotedPrice + (b.logisticsSurcharge || 0)) : 0,
-        durationDays: Math.ceil((new Date(el.endDate).getTime() - new Date(el.startDate).getTime()) / (1000 * 60 * 60 * 24))
+        serviceNature: b
+          ? b.serviceMode === 'managed'
+            ? 'Managed Event'
+            : 'Software Service'
+          : 'Standard',
+        totalCharged: b ? b.quotedPrice + (b.logisticsSurcharge || 0) : 0,
+        durationDays: Math.ceil(
+          (new Date(el.endDate).getTime() - new Date(el.startDate).getTime()) /
+            (1000 * 60 * 60 * 24),
+        ),
       };
     });
 
@@ -329,8 +342,10 @@ adminRouter.get('/audit', async (req, res, next) => {
     if (category) filter.action = { $regex: category, $options: 'i' };
 
     if (searchOrg) {
-      const orgs = await Organization.find({ name: { $regex: searchOrg, $options: 'i' } }).select('_id');
-      const orgIds = orgs.map(o => o._id);
+      const orgs = await Organization.find({ name: { $regex: searchOrg, $options: 'i' } }).select(
+        '_id',
+      );
+      const orgIds = orgs.map((o) => o._id);
       filter.organizationId = { $in: orgIds };
     }
 
@@ -340,6 +355,8 @@ adminRouter.get('/audit', async (req, res, next) => {
         .skip(skip)
         .limit(limit)
         .populate('organizationId', 'name')
+        .populate('userId', 'email role firstName lastName')
+        .populate('voterId', 'name email')
         .lean(),
       AuditLog.countDocuments(filter),
     ]);
@@ -347,13 +364,46 @@ adminRouter.get('/audit', async (req, res, next) => {
     // Filter out logs where the organization no longer exists
     const filteredLogs = logs.filter((l: any) => l.organizationId !== null);
 
+    const mappedLogs = filteredLogs.map((l: any) => {
+      let performedBy = '—';
+      if (l.userId) {
+        if (typeof l.userId === 'object') {
+          performedBy =
+            l.userId.email ||
+            [l.userId.firstName, l.userId.lastName].filter(Boolean).join(' ') ||
+            'User';
+        } else {
+          performedBy = String(l.userId);
+        }
+      } else if (l.voterId) {
+        if (typeof l.voterId === 'object') {
+          performedBy = l.voterId.name || l.voterId.email || 'Voter';
+        } else {
+          performedBy = String(l.voterId);
+        }
+      }
+
+      // Format details
+      const details = {
+        ...(typeof l.metadata === 'object' ? l.metadata : {}),
+        ...(l.newValues ? { newValues: l.newValues } : {}),
+        ...(l.oldValues ? { oldValues: l.oldValues } : {}),
+      };
+
+      return {
+        ...l,
+        performedBy,
+        details: Object.keys(details).length > 0 ? details : null,
+      };
+    });
+
     res.json({
       success: true,
-      data: { 
-        logs: filteredLogs, 
-        total: filteredLogs.length, 
-        page, 
-        totalPages: Math.ceil(filteredLogs.length / limit) 
+      data: {
+        logs: mappedLogs,
+        total: mappedLogs.length,
+        page,
+        totalPages: Math.ceil(mappedLogs.length / limit),
       },
     });
   } catch (err) {
@@ -374,10 +424,10 @@ adminRouter.post('/expenditures', financeController.createExpenditure);
 adminRouter.get('/financial-stats', financeController.getFinancialStats);
 
 // ── USER MANAGEMENT (Super Admin Only) ───────────────────────────────────
-adminRouter.get('/users/admins', adminUserController.getAdmins);
-adminRouter.post('/users/admins', adminUserController.createAdmin);
-adminRouter.get('/users/moderators', adminUserController.getModerators);
-adminRouter.delete('/users/:id', adminUserController.deleteUser);
+adminRouter.get('/users/admins', isSuperAdmin, adminUserController.getAdmins);
+adminRouter.post('/users/admins', isSuperAdmin, adminUserController.createAdmin);
+adminRouter.get('/users/moderators', isSuperAdmin, adminUserController.getModerators);
+adminRouter.delete('/users/:id', isSuperAdmin, adminUserController.deleteUser);
 
 // ── ESHOP ORDERS ─────────────────────────────────────────────────────────
 adminRouter.get('/eshop/orders', async (req, res, next) => {
@@ -386,13 +436,15 @@ adminRouter.get('/eshop/orders', async (req, res, next) => {
       .populate('organizationId', 'name email')
       .sort({ createdAt: -1 })
       .lean();
-    
+
     // Filter out orders where the organization no longer exists
     const filteredOrders = orders.filter((o: any) => o.organizationId !== null);
-    
+
     res.json({ success: true, data: filteredOrders });
   } catch (err) {
     next(err);
   }
 });
 
+// Mount equipment admin routes
+adminRouter.use('/eshop/equipment', adminEquipmentRouter);

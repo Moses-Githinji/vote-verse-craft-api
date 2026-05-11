@@ -10,7 +10,8 @@
     "test": "jest",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write \"src/**/*.ts\"",
-    "seed": "ts-node src/seed.ts"
+    "seed": "ts-node src/seed.ts",
+    "seed:equipment": "ts-node scripts/seedEquipment.ts"
   },
   "keywords": [],
   "author": "",

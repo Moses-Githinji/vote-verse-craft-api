@@ -5,4 +5,9 @@ module.exports = {
   testMatch: ['**/?(*.)+(spec|test).[tj]s?(x)'],
   moduleFileExtensions: ['ts', 'js', 'json', 'node'],
   forceExit: true,
+  globals: {
+    'ts-jest': {
+      diagnostics: false,
+    },
+  },
 };

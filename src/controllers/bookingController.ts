@@ -43,9 +43,6 @@ export const getAvailability = async (req: Request, res: Response) => {
   }
 };
 
-import { LogisticsService } from '../services/LogisticsService';
-import { EmailService } from '../services/EmailService';
-
 export const createBooking = async (req: Request, res: Response) => {
   try {
     const { 
@@ -314,6 +311,18 @@ export const submitIntent = async (req: Request, res: Response) => {
       projectedDurationMinutes: durationMinutes,
       throughputStress,
       notes: `Throughput-Based Intent. Duration: ${durationMinutes}m, Stress: ${throughputStress}. Power: ${infrastructureInfo?.power}, Data: ${infrastructureInfo?.internet}`
+    });
+
+    // 3b. Log it
+    await writeAuditLog({
+      organizationId: org._id.toString(),
+      action: 'intent_submitted',
+      resourceType: 'booking',
+      resourceId: booking._id as any,
+      userId: undefined,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      newValues: { startDate, planId, location, serviceMode, quotedPrice }
     });
 
     // 4. Trigger Onboarding Email
@@ -681,8 +690,11 @@ export const getBookingInvoice = async (req: Request, res: Response) => {
     const user = (req as any).user;
     const orgId = (req as any).userOrgId;
     
+    // 0. Fetch associated invoice
+    const invoice = await Invoice.findOne({ bookingId: id });
+    
     // Detailed logging for debugging
-    logger.info(`Fetching invoice for booking ID: ${id}, userOrgId: ${orgId}, role: ${user.role}`);
+    logger.info(`Fetching invoice for booking ID: ${id}, userOrgId: ${orgId}, role: ${user.role}, invoiceStatus: ${invoice?.status}`);
 
     // Defensive check for database connectivity
     if (mongoose.connection.readyState !== 1) {
@@ -727,6 +739,7 @@ export const getBookingInvoice = async (req: Request, res: Response) => {
         voterCount: booking.voterCount,
         boothsCount: booking.boothsRequested,
         staffCount: booking.staffRequested,
+        invoiceStatus: invoice ? invoice.status : (booking.status === 'confirmed' ? 'unpaid' : 'draft'),
         breakdown: {
           softwareFee: fees.softwareFee,
           logisticsFee: fees.logisticsFee,

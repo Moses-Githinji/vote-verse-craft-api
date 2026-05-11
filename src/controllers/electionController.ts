@@ -60,12 +60,14 @@ export const getElectionById = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: { message: 'Invalid election ID format' } });
     }
 
-    // Require organization access
-    if (!userOrgId) {
-      return res.status(403).json({ success: false, error: { message: 'Organization not found' } });
+    // If we have a userOrgId, we should still use it for scoping if the user is authenticated
+    // Otherwise, we allow public access by ID
+    const query: any = { _id: id };
+    if (userOrgId) {
+      query.organizationId = userOrgId;
     }
 
-    const election = await Election.findOne({ _id: id, organizationId: userOrgId });
+    const election = await Election.findOne(query);
 
     if (!election) return res.status(404).json({ success: false, error: { message: 'Election not found' } });
 
@@ -116,20 +118,7 @@ export const createElection = async (req: Request, res: Response) => {
       req.body.status = 'draft';
     }
 
-    // --- Usage Limit Check ---
-    const usage = await EntitlementService.checkUsage(userOrgId, 'active_elections');
-    if (!usage.allowed) {
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: 'LIMIT_REACHED',
-          message: `Active election limit reached (${usage.limit}). Upgrade your plan to host more simultaneous elections.`,
-          current: usage.current,
-          limit: usage.limit,
-          requiredPlan: usage.requiredPlan
-        }
-      });
-    }
+    // --- Usage Limit Check Bypassed (using invoice-based model) ---
 
     const validatedData = electionSchema.parse(req.body);
 

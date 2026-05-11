@@ -247,20 +247,7 @@ export const createVoter = async (req: Request, res: Response) => {
 
     const voterData = { ...req.body, organizationId: userOrgId };
 
-    // --- Usage Limit Check ---
-    const usage = await EntitlementService.checkUsage(userOrgId, 'voters');
-    if (!usage.allowed) {
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: 'LIMIT_REACHED',
-          message: `Voter limit reached (${usage.limit}). Upgrade your plan to add more voters.`,
-          current: usage.current,
-          limit: usage.limit,
-          requiredPlan: usage.requiredPlan
-        }
-      });
-    }
+    // --- Usage Limit Check Bypassed (using invoice-based model) ---
 
     // If an image was uploaded, store the Cloudinary URL
     if (req.file) {
@@ -298,20 +285,7 @@ export const bulkCreateVoters = async (req: Request, res: Response) => {
 
     const result: any = await processVoterCSV(req.file.buffer, userOrgId.toString());
     
-    // --- Bulk Usage Limit Check ---
-    const { features } = await EntitlementService.getEffectivePlan(userOrgId);
-    if (features.maxVoters !== null) {
-      const currentVoters = await Voter.countDocuments({ organizationId: userOrgId, isActive: true });
-      if (currentVoters + result.validVoters.length > features.maxVoters) {
-        return res.status(403).json({
-          success: false,
-          error: {
-            code: 'LIMIT_REACHED',
-            message: `Bulk upload exceeds voter limit. Space remaining: ${features.maxVoters - currentVoters}. CSV contains ${result.validVoters.length} valid voters.`,
-          }
-        });
-      }
-    }
+    // --- Bulk Usage Limit Check Bypassed ---
 
     if (result.validVoters.length > 0) {
       await Voter.insertMany(result.validVoters);
