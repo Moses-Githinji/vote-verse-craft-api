@@ -43,8 +43,7 @@ export const login = async (req: Request, res: Response) => {
       expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as any
     });
 
-    user.lastLogin = new Date();
-    await user.save();
+    await User.updateOne({ _id: user._id }, { lastLogin: new Date() });
 
     // Write audit log
     await writeAuditLog({

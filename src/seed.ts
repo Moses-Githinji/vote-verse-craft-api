@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import { Organization } from './models/Organization';
-import { User } from './models/User';
+import { User, SuperAdmin } from './models/User';
 import { Plan } from './models/Plan';
 import { PLAN_LIMITS } from './config/entitlements';
 
@@ -88,14 +88,13 @@ async function seedSuperAdmin() {
   );
 
   // Upsert the super admin
-  await User.findOneAndUpdate(
+  await SuperAdmin.findOneAndUpdate(
     { email },
     {
       email,
       passwordHash: hashedPassword,
       firstName: 'System',
       lastName: 'Administrator',
-      organizationId: org._id,
       role: 'super_admin',
       isActive: true,
     },
