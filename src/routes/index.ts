@@ -18,11 +18,13 @@ import { paymentRouter } from './paymentRoutes';
 import { subscriptionRouter } from './subscriptionRoutes';
 import publicRouter from './publicRoutes';
 import { fileRouter } from './fileRoutes';
+import { supportChatRouter } from './supportChatRoutes';
 
 export const apiRouter = Router();
 
 // Public Routes (No authentication required)
 apiRouter.use('/public', publicRouter);
+apiRouter.use('/support-chat', supportChatRouter);
 
 // Protected/Organization Routes
 apiRouter.use('/auth', authRouter);

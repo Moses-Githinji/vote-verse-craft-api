@@ -4,6 +4,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import { app } from './app';
 import { logger } from './utils/logger';
 import { configureSockets } from './sockets/electionMonitoring';
+import { configureSupportChatSockets } from './sockets/supportChat';
 import { EmailService } from './services/EmailService';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -32,6 +33,7 @@ if (process.env.NODE_ENV !== 'test') {
 
   // Configure Socket Namespaces
   configureSockets(io);
+  configureSupportChatSockets(io);
 } else {
   logger.info('Test environment detected: skipping Socket.IO initialization');
 }
