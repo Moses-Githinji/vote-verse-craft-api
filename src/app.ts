@@ -14,22 +14,23 @@ app.use(helmet());
 
 // CORS - allow production frontend explicitly
 const corsOptions = {
-  origin: function(origin: string | undefined, callback: (err: Error | null, allow: boolean) => void) {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow: boolean) => void) {
     // Allow requests with no origin (mobile apps, curl, Postman)
     if (!origin) {
       return callback(null, true);
     }
-    
+
     // List of allowed origins
     const allowedOrigins = [
       'http://localhost:8081',
       'http://localhost:8080',
       'http://localhost:3000',
       'http://localhost:5174',
-      'https://kurapap-admin.vercel.app',
-      'https://shulepal-connect.vercel.app'
+      'https://admin.kurapap.co.ke',
+      'https://org.kurapap.co.ke',
+      'https://kurapap.co.ke'
     ];
-    
+
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
