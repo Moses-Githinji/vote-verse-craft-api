@@ -20,8 +20,9 @@ if (process.env.NODE_ENV !== 'test') {
         'http://localhost:8080',
         'http://localhost:8081',
         'http://localhost:3000',
-        'https://kurapap-admin.vercel.app',
-        'https://shulepal-connect.vercel.app',
+        'https://admin.kurapap.co.ke',
+        'https://org.kurapap.co.ke',
+        'https://kurapap.co.ke'
       ],
       methods: ['GET', 'POST'],
       credentials: true,
