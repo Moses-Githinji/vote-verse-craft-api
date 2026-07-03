@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,9 +8,26 @@
   <title>Intent Approved — KuraPap</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:#E8EDF2; font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; -webkit-font-smoothing:antialiased; color:#0C1B36; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-    table { border-collapse: collapse !important; }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #E8EDF2;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      color: #0C1B36;
+      width: 100% !important;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+
+    table {
+      border-collapse: collapse !important;
+    }
   </style>
   <!--[if mso]>
   <style type="text/css">
@@ -17,135 +35,321 @@
   </style>
   <![endif]-->
   <style>
-    
-    .wrap { background:#E8EDF2; padding:40px 16px; }
-    .box { width: 100%; max-width:600px; margin:0 auto; background:#ffffff; border:1px solid #D0D9E3; border-radius:4px; overflow:hidden; }
+    .wrap {
+      background: #E8EDF2;
+      padding: 40px 16px;
+    }
+
+    .box {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #D0D9E3;
+      border-radius: 4px;
+      overflow: hidden;
+    }
 
     /* HEADER */
-    .hdr { background:linear-gradient(135deg,#0C1B36,#0A2035); padding:48px 40px 40px; position:relative; }
-    .wm { margin-bottom:36px; }
-    .wm-ico { display:inline-block; width:36px; height:36px; background:linear-gradient(135deg,#1A9E8F,#27C9B5); border-radius:6px; text-align:center; vertical-align:middle; line-height:36px; }
-    .wm-txt { font-size:16px; font-weight:800; color:#F6F8FA; letter-spacing:-0.02em; margin-left:10px; vertical-align:middle; }
-    .wm-txt span { color:#27C9B5; }
-    .badge { display:inline-block; background:rgba(39,201,181,0.15); border:1px solid rgba(39,201,181,0.4); border-radius:2px; padding:4px 10px; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#27C9B5; margin-bottom:16px; }
-    .hdr h1 { font-size:26px; font-weight:800; color:#F6F8FA; line-height:1.2; letter-spacing:-0.03em; margin-bottom:12px; }
-    .hdr h1 em { font-style:normal; color:#27C9B5; }
-    .hdr p { font-size:14px; color:#8aa8c0; line-height:1.6; }
+    .hdr {
+      background: linear-gradient(135deg, #0C1B36, #0A2035);
+      padding: 48px 40px 40px;
+      position: relative;
+    }
+
+    .wm {
+      margin-bottom: 36px;
+    }
+
+    .wm-ico {
+      display: inline-block;
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #1A9E8F, #27C9B5);
+      border-radius: 6px;
+      text-align: center;
+      vertical-align: middle;
+      line-height: 36px;
+    }
+
+    .wm-txt {
+      font-size: 16px;
+      font-weight: 800;
+      color: #F6F8FA;
+      letter-spacing: -0.02em;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+
+    .wm-txt span {
+      color: #27C9B5;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(39, 201, 181, 0.15);
+      border: 1px solid rgba(39, 201, 181, 0.4);
+      border-radius: 2px;
+      padding: 4px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #27C9B5;
+      margin-bottom: 16px;
+    }
+
+    .hdr h1 {
+      font-size: 26px;
+      font-weight: 800;
+      color: #F6F8FA;
+      line-height: 1.2;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+    }
+
+    .hdr h1 em {
+      font-style: normal;
+      color: #27C9B5;
+    }
+
+    .hdr p {
+      font-size: 14px;
+      color: #8aa8c0;
+      line-height: 1.6;
+    }
 
     /* BODY */
-    .body { padding:40px; background:#ffffff; }
-    .greet { font-size:15px; color:#0C1B36; line-height:1.7; margin-bottom:28px; }
+    .body {
+      padding: 40px;
+      background: #ffffff;
+    }
+
+    .greet {
+      font-size: 15px;
+      color: #0C1B36;
+      line-height: 1.7;
+      margin-bottom: 28px;
+    }
 
     /* Credentials Card */
-    .cred-card { background:#0C1B36; color:#F6F8FA; padding:24px; border-radius:4px; margin-bottom:32px; }
-    .cred-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.14em; color:#27C9B5; margin-bottom:16px; }
-    .cred-item { margin-bottom:12px; }
-    .cred-key { font-size:11px; color:#8aa8c0; margin-bottom:4px; }
-    .cred-val { font-family:monospace; font-size:14px; font-weight:700; color:#F6F8FA; background:rgba(255,255,255,0.05); padding:10px; border-radius:4px; border:1px solid rgba(39,201,181,0.2); word-break: break-all; }
+    .cred-card {
+      background: #0C1B36;
+      color: #F6F8FA;
+      padding: 24px;
+      border-radius: 4px;
+      margin-bottom: 32px;
+    }
+
+    .cred-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #27C9B5;
+      margin-bottom: 16px;
+    }
+
+    .cred-item {
+      margin-bottom: 12px;
+    }
+
+    .cred-key {
+      font-size: 11px;
+      color: #8aa8c0;
+      margin-bottom: 4px;
+    }
+
+    .cred-val {
+      font-family: monospace;
+      font-size: 14px;
+      font-weight: 700;
+      color: #F6F8FA;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid rgba(39, 201, 181, 0.2);
+      word-break: break-all;
+    }
 
     /* Details table */
-    .card { background:#F6F8FA; border:1px solid #D0D9E3; border-radius:4px; overflow:hidden; margin-bottom:32px; }
-    .card-hdr { padding:12px 20px; border-bottom:1px solid #D0D9E3; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#1A9E8F; }
-    .det-row td { padding:12px 20px; border-bottom:1px solid #D0D9E3; font-size:13px; color:#0C1B36; }
-    .det-row:last-child td { border-bottom:none; }
-    .det-key { color:#5A6A7E; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; }
+    .card {
+      background: #F6F8FA;
+      border: 1px solid #D0D9E3;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 32px;
+    }
+
+    .card-hdr {
+      padding: 12px 20px;
+      border-bottom: 1px solid #D0D9E3;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1A9E8F;
+    }
+
+    .det-row td {
+      padding: 12px 20px;
+      border-bottom: 1px solid #D0D9E3;
+      font-size: 13px;
+      color: #0C1B36;
+    }
+
+    .det-row:last-child td {
+      border-bottom: none;
+    }
+
+    .det-key {
+      color: #5A6A7E;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
 
     /* CTA */
-    .cta { text-align:center; padding:28px 0; }
-    .cta-btn { display:inline-block; background:linear-gradient(135deg,#1A9E8F,#27C9B5); color:#ffffff !important; text-decoration:none; font-size:13px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; padding:16px 40px; border-radius:2px; }
+    .cta {
+      text-align: center;
+      padding: 28px 0;
+    }
+
+    .cta-btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #1A9E8F, #27C9B5);
+      color: #ffffff !important;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 16px 40px;
+      border-radius: 2px;
+    }
 
     /* FOOTER */
-    .ftr { padding:32px 40px; background:#F6F8FA; border-top:1px solid #D0D9E3; text-align:center; }
+    .ftr {
+      padding: 32px 40px;
+      background: #F6F8FA;
+      border-top: 1px solid #D0D9E3;
+      text-align: center;
+    }
 
     @media screen and (max-width: 600px) {
-      .wrap { padding: 10px 0 !important; }
-      .box { border-radius: 0 !important; border: none !important; }
-      .hdr { padding: 32px 20px !important; }
-      .body { padding: 32px 20px !important; }
-      .stack { display: block !important; width: 100% !important; text-align: left !important; }
+      .wrap {
+        padding: 10px 0 !important;
+      }
+
+      .box {
+        border-radius: 0 !important;
+        border: none !important;
+      }
+
+      .hdr {
+        padding: 32px 20px !important;
+      }
+
+      .body {
+        padding: 32px 20px !important;
+      }
+
+      .stack {
+        display: block !important;
+        width: 100% !important;
+        text-align: left !important;
+      }
     }
   </style>
 </head>
+
 <body>
-<center class="wrap">
-  <table class="box" cellpadding="0" cellspacing="0">
-    <tr>
-      <td class="hdr">
-        <div class="wm">
-          <div class="wm-ico">
-            <img src="https://img.icons8.com/ios-filled/50/ffffff/checked-checkbox.png" width="20" style="vertical-align:middle;margin-bottom:4px" alt=""/>
+  <center class="wrap">
+    <table class="box" cellpadding="0" cellspacing="0">
+      <tr>
+        <td class="hdr">
+          <div class="wm">
+            <div class="wm-ico">
+              <img src="https://img.icons8.com/ios-filled/50/ffffff/checked-checkbox.png" width="20"
+                style="vertical-align:middle;margin-bottom:4px" alt="" />
+            </div>
+            <span class="wm-txt">Kura<span>Pap</span></span>
           </div>
-          <span class="wm-txt">Kura<span>Pap</span></span>
-        </div>
-        <div class="badge">Approved</div>
-        <h1>Your election request<br/>has been <em>confirmed</em>.</h1>
-        <p>Calibration complete. Your organization is now live on our platform.</p>
-      </td>
-    </tr>
-    <tr>
-      <td class="body">
-        <p class="greet">
-          Hello <strong>{{ORGANIZATION_NAME}}</strong>,<br/><br/>
-          We are pleased to inform you that your election intent has been approved. Below are your account credentials.
-        </p>
+          <div class="badge">Approved</div>
+          <h1>Your election request<br />has been <em>confirmed</em>.</h1>
+          <p>Calibration complete. Your organization is now live on our platform.</p>
+        </td>
+      </tr>
+      <tr>
+        <td class="body">
+          <p class="greet">
+            Hello <strong>{{ORGANIZATION_NAME}}</strong>,<br /><br />
+            We are pleased to inform you that your election intent has been approved. Below are your account
+            credentials.
+          </p>
 
-        <!-- Credentials -->
-        <div class="cred-card">
-          <div class="cred-label">Account Credentials</div>
-          <div class="cred-item">
-            <div class="cred-key">Login Email</div>
-            <div class="cred-val">{{LOGIN_EMAIL}}</div>
+          <!-- Credentials -->
+          <div class="cred-card">
+            <div class="cred-label">Account Credentials</div>
+            <div class="cred-item">
+              <div class="cred-key">Login Email</div>
+              <div class="cred-val">{{LOGIN_EMAIL}}</div>
+            </div>
+            <div class="cred-item">
+              <div class="cred-key">Temporary Password</div>
+              <div class="cred-val">{{LOGIN_PASSWORD}}</div>
+            </div>
           </div>
-          <div class="cred-item">
-            <div class="cred-key">Temporary Password</div>
-            <div class="cred-val">{{LOGIN_PASSWORD}}</div>
-          </div>
-        </div>
 
-        <!-- Details -->
-        <table class="card" width="100%" cellpadding="0" cellspacing="0">
-          <tr><td class="card-hdr" colspan="2">Election Summary</td></tr>
-          <tr class="det-row">
-            <td class="det-key" width="50%">Booking ID</td>
-            <td style="text-align:right;font-weight:700">#{{BOOKING_ID}}</td>
-          </tr>
-          <tr class="det-row">
-            <td class="det-key">Plan</td>
-            <td style="text-align:right;font-weight:700">{{PLAN_NAME}}</td>
-          </tr>
-          <tr class="det-row">
-            <td class="det-key">Location</td>
-            <td style="text-align:right;font-weight:700">{{LOCATION}}</td>
-          </tr>
-        </table>
+          <!-- Details -->
+          <table class="card" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td class="card-hdr" colspan="2">Election Summary</td>
+            </tr>
+            <tr class="det-row">
+              <td class="det-key" width="50%">Booking ID</td>
+              <td style="text-align:right;font-weight:700">#{{BOOKING_ID}}</td>
+            </tr>
+            <tr class="det-row">
+              <td class="det-key">Plan</td>
+              <td style="text-align:right;font-weight:700">{{PLAN_NAME}}</td>
+            </tr>
+            <tr class="det-row">
+              <td class="det-key">Location</td>
+              <td style="text-align:right;font-weight:700">{{LOCATION}}</td>
+            </tr>
+          </table>
 
-        <!-- CTA -->
-        <table width="100%" cellpadding="0" cellspacing="0">
-          <tr>
-            <td class="cta">
-              <a href="https://admin.kurapap.co.ke/login" class="cta-btn">Login to Dashboard</a>
-              <div style="margin-top:12px;font-size:11px;color:#5A6A7E">Please change your password after logging in</div>
-            </td>
-          </tr>
-        </table>
+          <!-- CTA -->
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td class="cta">
+                <a href="https://org.kurapap.co.ke/login" class="cta-btn">Login to Dashboard</a>
+                <div style="margin-top:12px;font-size:11px;color:#5A6A7E">Please change your password after logging in
+                </div>
+              </td>
+            </tr>
+          </table>
 
-        <div style="height:1px;background:#E8EDF2;margin:24px 0"></div>
-        <p style="font-size:11px;color:#5A6A7E;line-height:1.6">
-          <strong>Security:</strong> Staff will never ask for your password. Keep your credentials secure.
-        </p>
-      </td>
-    </tr>
-    <tr>
-      <td class="ftr">
-        <p style="font-size:11px;color:#5A6A7E">
-          <a href="#" style="color:#5A6A7E;text-decoration:none;margin:0 8px">Terms</a>
-          <a href="#" style="color:#5A6A7E;text-decoration:none;margin:0 8px">Privacy</a>
-          <a href="#" style="color:#5A6A7E;text-decoration:none;margin:0 8px">Support</a>
-        </p>
-        <p style="font-size:11px;color:#5A6A7E;margin-top:12px">KuraPap DVaaS · Nairobi, Kenya</p>
-      </td>
-    </tr>
-  </table>
-</center>
+          <div style="height:1px;background:#E8EDF2;margin:24px 0"></div>
+          <p style="font-size:11px;color:#5A6A7E;line-height:1.6">
+            <strong>Security:</strong> Staff will never ask for your password. Keep your credentials secure.
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td class="ftr">
+          <p style="font-size:11px;color:#5A6A7E">
+            <a href="#" style="color:#5A6A7E;text-decoration:none;margin:0 8px">Terms</a>
+            <a href="#" style="color:#5A6A7E;text-decoration:none;margin:0 8px">Privacy</a>
+            <a href="#" style="color:#5A6A7E;text-decoration:none;margin:0 8px">Support</a>
+          </p>
+          <p style="font-size:11px;color:#5A6A7E;margin-top:12px">KuraPap DVaaS · Nairobi, Kenya</p>
+        </td>
+      </tr>
+    </table>
+  </center>
 </body>
+
 </html>

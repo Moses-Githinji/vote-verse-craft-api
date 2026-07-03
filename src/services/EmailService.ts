@@ -145,7 +145,7 @@ export class EmailService {
     // 2. Build the base URL for links
     const baseUrl = process.env.CLIENT_STATUS_BASE_URL || 'https://org.kurapap.co.ke';
     const statusUrl = data.statusUrl || `${baseUrl}/status/${data.bookingId}`;
-    const paymentUrl = data.paymentUrl || `${baseUrl}/status/${data.bookingId}/pay`;
+    const paymentUrl = data.paymentUrl || `${baseUrl}/pay/${data.bookingId}`;
 
     // 3. Format values
     const formattedPrice = data.quotedPrice ? data.quotedPrice.toLocaleString('en-KE') : '—';
