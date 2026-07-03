@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Response to Your Inquiry — KuraPap</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#E8EDF2; font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; -webkit-font-smoothing:antialiased; color:#0C1B36; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table { border-collapse: collapse !important; }
+  </style>
+  <!--[if mso]>
+  <style type="text/css">
+    table { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+  </style>
+  <![endif]-->
+  <style>
+    
+    .wrap { background:#E8EDF2; padding:40px 16px; }
+    .box { width: 100%; max-width:600px; margin:0 auto; background:#ffffff; border:1px solid #D0D9E3; border-radius:4px; overflow:hidden; }
+
+    /* HEADER */
+    .hdr { background:linear-gradient(135deg,#0C1B36,#0A2035); padding:48px 40px 40px; position:relative; }
+    .wm { margin-bottom:36px; }
+    .wm-ico { display:inline-block; width:36px; height:36px; background:linear-gradient(135deg,#1A9E8F,#27C9B5); border-radius:6px; text-align:center; vertical-align:middle; line-height:36px; }
+    .wm-txt { font-size:16px; font-weight:800; color:#F6F8FA; letter-spacing:-0.02em; margin-left:10px; vertical-align:middle; }
+    .wm-txt span { color:#27C9B5; }
+    .badge { display:inline-block; background:rgba(39,201,181,0.15); border:1px solid rgba(39,201,181,0.4); border-radius:2px; padding:4px 10px; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#27C9B5; margin-bottom:16px; }
+    .hdr h1 { font-size:26px; font-weight:800; color:#F6F8FA; line-height:1.2; letter-spacing:-0.03em; margin-bottom:12px; }
+    .hdr h1 em { font-style:normal; color:#27C9B5; }
+    .hdr p { font-size:14px; color:#8aa8c0; line-height:1.6; }
+
+    /* BODY */
+    .body { padding:40px; background:#ffffff; }
+    .greet { font-size:15px; color:#0C1B36; line-height:1.7; margin-bottom:28px; }
+
+    .msg-block { background:#F6F8FA; border-left: 4px solid #1A9E8F; padding: 20px; font-size: 14px; line-height: 1.6; color: #0C1B36; margin-bottom: 28px; white-space: pre-wrap; }
+
+    .original-msg { margin-top: 32px; font-size: 13px; color: #5A6A7E; border-top: 1px solid #D0D9E3; padding-top: 20px; }
+    .original-msg strong { color: #0C1B36; }
+    .original-msg blockquote { border-left: 3px solid #D0D9E3; padding-left: 12px; margin-left: 0; margin-top: 8px; font-style: italic; white-space: pre-wrap; }
+
+    /* CTA */
+    .cta { text-align:center; padding:28px 0; }
+    .cta-btn { display:inline-block; background:linear-gradient(135deg,#1A9E8F,#27C9B5); color:#ffffff !important; text-decoration:none; font-size:13px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; padding:16px 40px; border-radius:2px; }
+
+    /* FOOTER */
+    .ftr { padding:32px 40px; background:#F6F8FA; border-top:1px solid #D0D9E3; text-align:center; }
+
+    @media screen and (max-width: 600px) {
+      .wrap { padding: 10px 0 !important; }
+      .box { border-radius: 0 !important; border: none !important; }
+      .hdr { padding: 32px 20px !important; }
+      .body { padding: 32px 20px !important; }
+    }
+  </style>
+</head>
+<body>
+<center class="wrap">
+  <table class="box" cellpadding="0" cellspacing="0">
+    <tr>
+      <td class="hdr">
+        <div class="wm">
+          <div class="wm-ico">
+            <img src="https://img.icons8.com/ios-filled/50/ffffff/checked-checkbox.png" width="20" style="vertical-align:middle;margin-bottom:4px" alt=""/>
+          </div>
+          <span class="wm-txt">Kura<span>Pap</span></span>
+        </div>
+        <div class="badge">Support Update</div>
+        <h1>Response to your<br/><em>inquiry</em>.</h1>
+        <p>Re: {{ORIGINAL_SUBJECT}}</p>
+      </td>
+    </tr>
+    <tr>
+      <td class="body">
+        <p class="greet">
+          Hello <strong>{{USER_NAME}}</strong>,<br/><br/>
+          Thank you for reaching out to the KuraPap team. Please find our response below:
+        </p>
+
+        <!-- Message Block -->
+        <div class="msg-block">{{REPLY_TEXT}}</div>
+
+        <p class="greet">
+          If you have any further questions, feel free to reply directly to this email or submit another inquiry through our platform.
+        </p>
+
+        <!-- Original Message -->
+        <div class="original-msg">
+          <strong>Your Original Message:</strong>
+          <blockquote>{{ORIGINAL_MESSAGE}}</blockquote>
+        </div>
+
+        <div style="height:1px;background:#E8EDF2;margin:24px 0"></div>
+        <p style="font-size:11px;color:#5A6A7E;line-height:1.6">
+          KuraPap guarantees a zero-dispute election experience backed by our Integrity Engine.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td class="ftr">
+        <p style="font-size:11px;color:#5A6A7E;margin-top:12px">KuraPap DVaaS · Nairobi, Kenya</p>
+      </td>
+    </tr>
+  </table>
+</center>
+</body>
+</html>

@@ -100,6 +100,30 @@ const SUBJECTS: Record<EmailType, string> = {
 // Main EmailService
 // ─────────────────────────────────────────────────────────────────────────────
 export class EmailService {
+  static async sendContactReply(
+    to: string,
+    userName: string,
+    originalSubject: string,
+    originalMessage: string,
+    replyText: string
+  ) {
+    const html = loadTemplate('contact_reply', {
+      USER_NAME: userName,
+      ORIGINAL_SUBJECT: originalSubject,
+      ORIGINAL_MESSAGE: originalMessage,
+      REPLY_TEXT: replyText,
+    });
+    
+    const from = `"KuraPap" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`;
+    return await transporter.sendMail({
+      from,
+      to,
+      subject: `Re: ${originalSubject}`,
+      html,
+      text: htmlToText(html),
+    });
+  }
+
   /**
    * Sends a templated onboarding email to an organisation.
    *

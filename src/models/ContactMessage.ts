@@ -5,6 +5,10 @@ export interface IContactMessage extends Document {
   email: string;
   subject: string;
   message: string;
+  status: 'open' | 'replied';
+  replyText?: string;
+  repliedAt?: Date;
+  repliedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +34,21 @@ const contactMessageSchema = new Schema(
     message: {
       type: String,
       required: true,
+    },
+    status: {
+      type: String,
+      enum: ['open', 'replied'],
+      default: 'open',
+    },
+    replyText: {
+      type: String,
+    },
+    repliedAt: {
+      type: Date,
+    },
+    repliedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
     },
   },
   {

@@ -448,3 +448,8 @@ adminRouter.get('/eshop/orders', async (req, res, next) => {
 
 // Mount equipment admin routes
 adminRouter.use('/eshop/equipment', adminEquipmentRouter);
+
+// ── CONTACT MESSAGES ─────────────────────────────────────────────────────
+import * as contactController from '../controllers/contactController';
+adminRouter.get('/contact-messages', contactController.getAllContactMessages);
+adminRouter.post('/contact-messages/:id/reply', contactController.replyToContactMessage);
