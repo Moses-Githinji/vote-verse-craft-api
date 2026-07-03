@@ -1,0 +1,44 @@
+name: Deploy Node.js Backend to HostAfrica
+
+on:
+  push:
+    branches:
+      - main  # Triggers the pipeline when you push to the main branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository Code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js Environment
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install Development Dependencies
+      run: npm ci
+
+    - name: Compile TypeScript to production JavaScript
+      run: npm run build
+
+    - name: Deploy Production Files via FTP Layer
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        # We only want to upload the build output, configurations, and package requirements
+        local-dir: ./
+        server-dir: /
+        dangerous-clean-slate: false
+        exclude: |
+          **/.git*
+          **/.git*/**
+          node_modules/**
+          src/**
+          tsconfig.json
+          README.md
