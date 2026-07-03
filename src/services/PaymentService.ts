@@ -26,14 +26,8 @@ export class PaymentService {
       return;
     }
 
-    // Only proceed if status is pending_verification
-    if (booking.status === 'pending_verification') {
-      booking.status = 'confirmed';
-      await booking.save();
-
-      // Trigger the same logic as manual verification
-      await this.confirmOrganizationAndUser(booking);
-    }
+    // We do NOT auto-confirm bookings here anymore.
+    // The system admin must manually verify and confirm intents/bookings.
 
     // Update Invoice status
     await Invoice.findOneAndUpdate(
@@ -100,98 +94,5 @@ export class PaymentService {
     }
 
     logger.info(`Organization ${organizationId} upgraded to ${planId}`);
-  }
-
-  /**
-   * Internal helper: Activate org, create user, send credentials
-   * (Mirrors logic in bookingController.ts:verifyBooking)
-   */
-  private static async confirmOrganizationAndUser(booking: any) {
-    const org = await Organization.findById(booking.organizationId);
-    if (!org) return;
-
-    // 1. Activate organization
-    org.isActive = true;
-    await org.save();
-
-    // 2. Generate random password
-    const password = generateRandomPassword(8);
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // 3. Create or update the Admin User
-    let user = await Admin.findOne({ email: org.email });
-    if (!user) {
-      await Admin.create({
-        organizationId: org._id,
-        email: org.email,
-        passwordHash: hashedPassword,
-        firstName: 'Admin',
-        lastName: org.name.split(' ')[0] || 'User',
-        role: 'admin',
-        isActive: true
-      });
-    } else {
-      user.passwordHash = hashedPassword;
-      user.organizationId = org._id as any;
-      user.isActive = true;
-      await user.save();
-    }
-
-    // 4. Send Confirmation Emails (Background)
-    const fees = LogisticsService.getFeeBreakdown(
-      booking.planId, 
-      booking.voterCount || 0, 
-      booking.logisticsSurcharge, 
-      booking.boothsRequested
-    );
-
-    const emailData = {
-      bookingId: booking._id.toString(),
-      location: booking.location,
-      startDate: booking.startDate.toISOString(),
-      planName: booking.planId.charAt(0).toUpperCase() + booking.planId.slice(1),
-      serviceMode: booking.serviceMode,
-      loginEmail: org.email,
-      loginPassword: password,
-      quotedPrice: booking.quotedPrice || fees.total,
-      softwareFee: fees.softwareFee,
-      logisticsFee: fees.logisticsFee,
-      voterFee: fees.voterFee,
-      voterCount: booking.voterCount || 0,
-      boothsCount: booking.boothsRequested,
-      staffCount: booking.staffRequested,
-      attachInvoice: true
-    };
-
-    EmailService.sendOnboardingEmail('intent_approved', org._id.toString(), emailData)
-      .catch(err => logger.error('Email confirmation failed:', err));
-
-    // 5. WhatsApp Notification (Background)
-    const phone = org.phone;
-    if (phone) {
-      (async () => {
-        try {
-          // Generate and upload invoice for WhatsApp attachment
-          const invoiceUrl = await InvoiceService.getInvoiceUrl(booking);
-          
-          await WhatsAppService.sendBookingConfirmation(
-            phone, 
-            booking._id.toString(), 
-            booking.startDate.toISOString().split('T')[0],
-            invoiceUrl
-          );
-          logger.info(`[WHATSAPP] Sent confirmation with invoice to ${phone}`);
-        } catch (err: any) {
-          // Fallback to sending without invoice if PDF/Cloudinary fails
-          logger.error('[WHATSAPP] Failed to attach invoice, sending text only:', err.message);
-          await WhatsAppService.sendBookingConfirmation(
-            phone, 
-            booking._id.toString(), 
-            booking.startDate.toISOString().split('T')[0]
-          ).catch(werr => logger.error('WhatsApp fallback failed:', werr));
-        }
-      })();
-    }
   }
 }

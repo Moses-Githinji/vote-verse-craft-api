@@ -5,13 +5,14 @@
   "main": "index.js",
   "scripts": {
     "start": "node dist/server.js",
-    "build": "tsc",
+    "build": "tsc && npx -y copyfiles -u 1 \"src/emails/**/*\" dist/",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "test": "jest",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "seed": "ts-node src/seed.ts",
-    "seed:equipment": "ts-node scripts/seedEquipment.ts"
+    "seed:equipment": "ts-node scripts/seedEquipment.ts",
+    "zip": "npx -y rimraf -g \"*.zip\" && npm run build && tar -a -c -f backend-build.zip dist package.json package-lock.json"
   },
   "keywords": [],
   "author": "",
