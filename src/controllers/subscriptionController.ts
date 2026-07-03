@@ -265,7 +265,7 @@ export const setSubscriptionStatus = async (req: Request, res: Response) => {
         await WhatsAppService.sendInvoicingNotification(
           org.phone, 
           'Managed Subscription', 
-          'https://kurapap-admin.vercel.app/billing'
+          'https://admin.kurapap.co.ke/billing'
         ).catch(err => console.error('WhatsApp past_due notification failed:', err));
       } else if (status === 'active' && oldSub?.status === 'past_due') {
         await WhatsAppService.sendPaymentSuccess(org.phone, sub._id.toString())

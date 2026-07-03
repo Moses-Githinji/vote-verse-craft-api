@@ -119,7 +119,7 @@ export class EmailService {
     const recipientName = org.name || 'Valued Client';
 
     // 2. Build the base URL for links
-    const baseUrl = process.env.CLIENT_STATUS_BASE_URL || 'https://shulepal-connect.vercel.app';
+    const baseUrl = process.env.CLIENT_STATUS_BASE_URL || 'https://org.kurapap.co.ke';
     const statusUrl = data.statusUrl || `${baseUrl}/status/${data.bookingId}`;
     const paymentUrl = data.paymentUrl || `${baseUrl}/status/${data.bookingId}/pay`;
 
