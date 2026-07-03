@@ -28,7 +28,7 @@ jobs:
     - name: Prepare Passenger Restart Trigger
       run: |
         mkdir -p tmp
-        touch tmp/restart.txt
+        date > tmp/restart.txt
 
     - name: FTP Deploy
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
